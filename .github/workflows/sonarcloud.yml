@@ -15,8 +15,12 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: '11'
-          distribution: 'temurin' # Options: 'temurin', 'zulu', etc.
+          distribution: 'temurin'
       - name: SonarCloud Scan
         uses: sonarsource/sonarcloud-github-action@master
         env:
           SONAR_TOKEN: d624dcd80b3b336be861e6fa178fae95a2d46b80
+        with:
+          args: >
+            -Dsonar.projectKey=kn2034_HealthSlot-F21AO
+            -Dsonar.organization=kn2034
