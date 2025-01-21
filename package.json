@@ -1,0 +1,11 @@
+{
+  "name": "healthslot-f21ao",
+  "version": "1.0.0",
+  "description": "A collaborative project for the F21AO HealthSlot team.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
