@@ -76,7 +76,80 @@ const registerOPDPatient = async (req, res) => {
     });
   }
 };
+const registerAEPatient = async (req, res) => {
+  try {
+    // Validate request data
+    const { error } = validateAERegistration(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation Error',
+        errors: error.details.map(detail => detail.message)
+      });
+    }
+
+    // Determine severity based on emergency details
+    const severity = determinePatientSeverity(req.body.emergencyDetails);
+
+    // Create new patient with severity
+    const patientData = {
+      ...req.body,
+      registrationType: 'A&E',
+      emergencyDetails: {
+        ...req.body.emergencyDetails,
+        severity // Add the determined severity
+      }
+    };
+
+    const patient = new Patient(patientData);
+    await patient.save();
+
+    // Create audit log
+    const auditLog = {
+      action: 'REGISTER',
+      resourceType: 'Patient',
+      resourceId: patient._id,
+      changes: {
+        registrationType: 'AE',
+        patientId: patient.patientId,
+        severity: emergencyDetails.severity
+      }
+    };
+
+    const savedLog = await createAuditLog(auditLog);
+
+    res.status(201).json({
+      success: true,
+      message: 'Patient registered successfully for A&E',
+      data: {
+        patientId: patient.patientId,
+        mongoId: patient._id,
+        name: `${patient.personalInfo.firstName} ${patient.personalInfo.lastName}`,
+        registrationType: patient.registrationType,
+        severity: emergencyDetails.severity,
+        registrationDate: patient.createdAt,
+        auditLogCreated: !!savedLog
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in registerAEPatient:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation Error',
+        errors: Object.values(error.errors).map(err => err.message)
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Error registering A&E patient',
+      error: error.message
+    });
+  }
+};
 
 module.exports = {
-  registerOPDPatient
+  registerOPDPatient,
+  registerAEPatient
 }; 
