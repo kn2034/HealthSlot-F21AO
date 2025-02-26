@@ -2,9 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { 
     registerOPDPatient, 
-    registerAEPatient, 
-    getPatientAuditLogs,
-    getAllAuditLogs 
+    registerAEPatient
 } = require('../controllers/patientController');
 
 /**
@@ -77,63 +75,5 @@ router.post('/register-opd', registerOPDPatient);
  *         description: Server error
  */
 router.post('/register-ae', registerAEPatient);
-
-/**
- * @swagger
- * /api/patients/audit-logs/{patientId}:
- *   get:
- *     tags:
- *       - Audit Logs
- *     summary: Get audit logs for a specific patient
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: Patient ID to fetch audit logs for
- *     responses:
- *       200:
- *         description: Audit logs retrieved successfully
- *       404:
- *         description: Patient not found
- *       500:
- *         description: Server error
- */
-router.get('/audit-logs/patient/:patientId', getPatientAuditLogs);
-
-/**
- * @swagger
- * /api/patients/audit-logs:
- *   get:
- *     tags:
- *       - Audit Logs
- *     summary: Get all audit logs
- *     parameters:
- *       - in: query
- *         name: startDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Start date for filtering logs
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date
- *         description: End date for filtering logs
- *       - in: query
- *         name: type
- *         schema:
- *           type: string
- *           enum: [OPD, A&E]
- *         description: Filter by registration type
- *     responses:
- *       200:
- *         description: Audit logs retrieved successfully
- *       500:
- *         description: Server error
- */
-router.get('/audit-logs', getAllAuditLogs);
 
 module.exports = router; 
