@@ -5,6 +5,10 @@ const specs = require('./src/config/swagger');
 const connectDB = require('./src/config/db');
 const patientRoutes = require('./src/routes/patientRoutes');
 const authRoutes = require('./src/routes/auth.routes');
+const admissionRoutes = require('./src/routes/admission.routes');
+const wardRoutes = require('./src/routes/ward.routes');
+const transferRoutes = require('./src/routes/transfer.routes');
+const testRegistrationRoutes = require('./src/routes/testRegistration.routes');
 const labTestRoutes = require('./src/routes/labTest.routes');
 const testResultRoutes = require('./src/routes/testResult.routes');
 
@@ -24,6 +28,10 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
+app.use('/api/admissions', admissionRoutes);
+app.use('/api/wards', wardRoutes);
+app.use('/api/transfers', transferRoutes);
+app.use('/api/lab', testRegistrationRoutes);
 app.use('/api/lab', labTestRoutes);
 app.use('/api/lab', testResultRoutes);
 
