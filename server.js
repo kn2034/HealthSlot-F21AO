@@ -3,6 +3,9 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
 const labTestRoutes = require('./src/routes/labTest');
+const testResultRoutes = require('./src/routes/testResult.routes');
+
+
 
 dotenv.config();
 const app = express();
@@ -12,6 +15,7 @@ app.use(bodyParser.json());    // middleware
 
 
 app.use('/api/lab-tests', labTestRoutes); // this for routes
+app.use('/api/lab', testResultRoutes);
 
 // MongoDB Connection code
 mongoose.connect(process.env.MONGO_URI, {
