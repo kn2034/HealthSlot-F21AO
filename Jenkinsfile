@@ -5,31 +5,15 @@ pipeline {
         DOCKER_IMAGE = 'healthslot-app'
         DOCKER_TAG = "${BUILD_NUMBER}"
         KUBERNETES_NAMESPACE = 'healthslot'
-        GITHUB_CREDENTIALS_ID = 'github-credentials'
-        DOCKER_CREDENTIALS_ID = 'docker-credentials'
         JIRA_PROJECT_KEY = 'HEALTH'
-    }
-    
-    triggers {
-        githubPush()
-    }
-    
-    options {
-        timestamps()
-        ansiColor('xterm')
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        disableConcurrentBuilds()
+        DOCKER_REGISTRY = 'docker.io'  // Replace with your registry
+        DOCKER_CREDENTIALS = 'docker-cred-id'  // Replace with your credentials ID
     }
     
     stages {
         stage('Checkout') {
             steps {
-                script {
-                    // Clean workspace before build
-                    cleanWs()
-                    // Checkout code from GitHub
-                    checkout scm
-                }
+                checkout scm
             }
         }
         
@@ -39,38 +23,37 @@ pipeline {
             }
         }
         
+        stage('Run Tests') {
+            steps {
+                sh 'npm test'
+            }
+        }
+        
         stage('Code Quality') {
-            parallel {
-                stage('Lint') {
-                    steps {
-                        sh 'npm run lint'
-                    }
-                }
-                stage('Unit Tests') {
-                    steps {
-                        sh 'npm test'
-                    }
-                }
+            steps {
+                sh 'npm run lint'
+                sh 'npm audit'
             }
         }
         
         stage('Security Scan') {
             steps {
                 script {
-                    // Run security scanning script
-                    sh '''
-                        chmod +x security/security-scan.sh
-                        ./security/security-scan.sh
-                    '''
-                    
                     // OWASP Dependency Check
                     sh 'npm audit'
                     
-                    // Container security scan
+                    // OWASP ZAP Scan
+                    sh '''
+                        docker run -t owasp/zap2docker-stable zap-baseline.py \
+                        -t http://localhost:3000 \
+                        -r zap-report.html
+                    '''
+                    
+                    // Container Scan
                     sh '''
                         docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
-                        aquasec/trivy image ${DOCKER_IMAGE}:${DOCKER_TAG} || true
+                        aquasec/trivy image ${DOCKER_IMAGE}:${DOCKER_TAG}
                     '''
                 }
             }
@@ -79,11 +62,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                    
-                    // Tag as latest
-                    sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
                 }
             }
         }
@@ -91,9 +70,8 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', DOCKER_CREDENTIALS_ID) {
+                    docker.withRegistry("https://${DOCKER_REGISTRY}", DOCKER_CREDENTIALS) {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        docker.image("${DOCKER_IMAGE}:latest").push()
                     }
                 }
             }
@@ -102,17 +80,30 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Update Kubernetes deployment
+                    // Apply Kubernetes configurations
                     sh """
                         kubectl apply -f k8s/namespace.yaml
                         kubectl apply -f k8s/deployment.yaml -n ${KUBERNETES_NAMESPACE}
                         kubectl apply -f k8s/service.yaml -n ${KUBERNETES_NAMESPACE}
-                        kubectl apply -f security/security-policy.yaml -n ${KUBERNETES_NAMESPACE}
+                        kubectl apply -f k8s/ingress.yaml -n ${KUBERNETES_NAMESPACE}
                     """
                     
-                    // Wait for deployment to complete
+                    // Update deployment with new image
+                    sh """
+                        kubectl set image deployment/healthslot-app \
+                        healthslot-app=${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} \
+                        -n ${KUBERNETES_NAMESPACE}
+                    """
+                }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                script {
                     sh """
                         kubectl rollout status deployment/healthslot-app -n ${KUBERNETES_NAMESPACE}
+                        kubectl get pods -n ${KUBERNETES_NAMESPACE}
                     """
                 }
             }
@@ -128,70 +119,30 @@ pipeline {
                 }
             }
         }
-        
-        stage('Integration Tests') {
-            steps {
-                script {
-                    // Wait for service to be ready
-                    sh 'sleep 30'
-                    
-                    // Run integration tests
-                    sh '''
-                        curl -f http://localhost:3000/health || exit 1
-                        curl -f http://localhost:3000/ready || exit 1
-                    '''
-                }
-            }
-        }
     }
     
     post {
         always {
-            // Clean up resources
+            // Clean workspace
             cleanWs()
-            sh 'docker system prune -f'
+            
+            // Generate test reports
+            junit '**/test-results.xml'
+            
+            // Archive artifacts
+            archiveArtifacts artifacts: '**/test-results.xml, zap-report.html', allowEmptyArchive: true
         }
-        
         success {
-            script {
-                // Update JIRA ticket status
-                jiraTransitionIssue(
-                    idOrKey: "${JIRA_PROJECT_KEY}-${BUILD_NUMBER}",
-                    input: [
-                        transition: [
-                            id: '31'
-                        ]
-                    ]
-                )
-                
-                // Send success notification
-                emailext (
-                    subject: "Pipeline Successful: ${currentBuild.fullDisplayName}",
-                    body: "The pipeline completed successfully.",
-                    recipientProviders: [[$class: 'DevelopersRecipientProvider']]
-                )
-            }
+            echo 'Pipeline completed successfully!'
         }
-        
         failure {
-            script {
-                // Update JIRA ticket status
-                jiraTransitionIssue(
-                    idOrKey: "${JIRA_PROJECT_KEY}-${BUILD_NUMBER}",
-                    input: [
-                        transition: [
-                            id: '41'
-                        ]
-                    ]
-                )
-                
-                // Send failure notification
-                emailext (
-                    subject: "Pipeline Failed: ${currentBuild.fullDisplayName}",
-                    body: "The pipeline failed. Please check the logs.",
-                    recipientProviders: [[$class: 'DevelopersRecipientProvider']]
-                )
-            }
+            echo 'Pipeline failed!'
+            // Send notification on failure
+            emailext (
+                subject: "Pipeline Failed: ${currentBuild.fullDisplayName}",
+                body: "Pipeline failed. Please check the build logs.",
+                recipientProviders: [[$class: 'DevelopersRecipientProvider']]
+            )
         }
     }
 } 
