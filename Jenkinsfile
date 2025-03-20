@@ -99,7 +99,7 @@ pipeline {
                             fi
                             
                             # Set Docker socket path for macOS
-                            export DOCKER_HOST="unix://${HOME}/Library/Containers/com.docker.docker/Data/docker-cli.sock"
+                            export DOCKER_HOST="unix:///Users/kirannarayana/Library/Containers/com.docker.docker/Data/docker-cli.sock"
                             
                             # Build the Docker image
                             docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
