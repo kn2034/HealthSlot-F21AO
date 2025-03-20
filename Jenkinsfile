@@ -86,23 +86,29 @@ pipeline {
                 script {
                     try {
                         sh '''
-                            # Check if Docker is available
-                            if ! command -v docker &> /dev/null; then
-                                echo "Docker command not found. Please ensure Docker Desktop is installed and running."
+                            # Use full path to Docker
+                            DOCKER_PATH="/usr/local/bin/docker"
+                            
+                            # Check if Docker exists at the default location
+                            if [ ! -f "$DOCKER_PATH" ]; then
+                                # Try Homebrew installation path
+                                DOCKER_PATH="/opt/homebrew/bin/docker"
+                            fi
+                            
+                            # Check if Docker exists at Homebrew location
+                            if [ ! -f "$DOCKER_PATH" ]; then
+                                echo "Docker not found. Please ensure Docker Desktop is installed and in PATH"
                                 exit 1
                             fi
                             
                             # Check Docker daemon connection
-                            if ! docker info &> /dev/null; then
+                            if ! "$DOCKER_PATH" info &> /dev/null; then
                                 echo "Cannot connect to Docker daemon. Please ensure Docker Desktop is running."
                                 exit 1
                             fi
                             
-                            # Set Docker socket path for macOS
-                            export DOCKER_HOST="unix:///Users/kirannarayana/Library/Containers/com.docker.docker/Data/docker-cli.sock"
-                            
                             # Build the Docker image
-                            docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                            "$DOCKER_PATH" build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
                         '''
                     } catch (Exception e) {
                         echo "Failed to build Docker image: ${e.message}"

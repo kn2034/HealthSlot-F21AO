@@ -1,62 +1,50 @@
 const Patient = require('../models/Patient');
-const { validateOPDRegistration } = require('../validation/patientValidation');
+const { createAuditLog } = require('../utils/auditLog');
 
+// Validation functions
+const validateAERegistration = (data) => {
+  // Basic validation for A&E registration
+  if (!data.name || !data.phoneNumber || !data.emergencyContact) {
+    throw new Error('Missing required fields for A&E registration');
+  }
+  return true;
+};
+
+const determinePatientSeverity = (symptoms) => {
+  // Basic severity determination logic
+  if (!symptoms || symptoms.length === 0) return 'LOW';
+  const severityKeywords = ['severe', 'critical', 'emergency', 'acute'];
+  return severityKeywords.some(keyword => 
+    symptoms.toLowerCase().includes(keyword)) ? 'HIGH' : 'MEDIUM';
+};
+
+// Controller functions
 const registerOPDPatient = async (req, res) => {
   try {
-    // Validate request data
-    const { error } = validateOPDRegistration(req.body);
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation Error',
-        errors: error.details.map(detail => detail.message)
-      });
-    }
-
-    // Create new patient
     const patientData = {
       ...req.body,
-      registrationType: 'OPD'
+      registrationType: 'OPD',
+      registrationDate: new Date()
     };
-    
-    // Check for existing patient
-    const existingPatient = await Patient.findOne({
-      'contactInfo.phone': patientData.contactInfo.phone
-    });
-
-    if (existingPatient) {
-      return res.status(400).json({
-        success: false,
-        message: 'Patient with this phone number already exists'
-      });
-    }
 
     const patient = new Patient(patientData);
-    await patient.save();
+    await patient.validate();
+    const savedPatient = await patient.save();
 
     // Create audit log
-    const auditLog = {
-      action: 'REGISTER',
+    await createAuditLog({
+      action: 'PATIENT_REGISTRATION',
       resourceType: 'Patient',
-      resourceId: patient._id,
-      changes: {
-        registrationType: 'OPD',
-        patientId: patient.patientId
-      }
-    };
+      resourceId: savedPatient._id,
+      details: 'OPD Patient registration',
+      userId: req.user ? req.user._id : null
+    });
 
-    const savedLog = await createAuditLog(auditLog);
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: 'Patient registered successfully for OPD',
       data: {
-        patientId: patient.patientId,
-        mongoId: patient._id,
-        name: `${patient.personalInfo.firstName} ${patient.personalInfo.lastName}`,
-        registrationType: patient.registrationType,
-        registrationDate: patient.createdAt,
-        auditLogCreated: !!savedLog
+        patientId: savedPatient._id,
+        registrationType: savedPatient.registrationType
       }
     });
 
@@ -65,70 +53,55 @@ const registerOPDPatient = async (req, res) => {
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
-        message: 'Validation Error',
-        errors: Object.values(error.errors).map(err => err.message)
+        error: 'Validation Error',
+        details: error.message
       });
     }
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: 'Error registering OPD patient',
-      error: error.message
+      error: 'Server Error',
+      details: error.message
     });
   }
 };
+
 const registerAEPatient = async (req, res) => {
   try {
-    // Validate request data
-    const { error } = validateAERegistration(req.body);
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation Error',
-        errors: error.details.map(detail => detail.message)
-      });
-    }
+    // Validate A&E specific fields
+    validateAERegistration(req.body);
 
-    // Determine severity based on emergency details
-    const severity = determinePatientSeverity(req.body.emergencyDetails);
+    const emergencyDetails = {
+      severity: determinePatientSeverity(req.body.symptoms),
+      triageNotes: req.body.triageNotes || '',
+      emergencyContact: req.body.emergencyContact
+    };
 
-    // Create new patient with severity
     const patientData = {
       ...req.body,
       registrationType: 'A&E',
-      emergencyDetails: {
-        ...req.body.emergencyDetails,
-        severity // Add the determined severity
-      }
+      registrationDate: new Date(),
+      emergencyDetails
     };
 
     const patient = new Patient(patientData);
-    await patient.save();
+    await patient.validate();
+    const savedPatient = await patient.save();
 
     // Create audit log
-    const auditLog = {
-      action: 'REGISTER',
+    await createAuditLog({
+      action: 'PATIENT_REGISTRATION',
       resourceType: 'Patient',
-      resourceId: patient._id,
-      changes: {
-        registrationType: 'AE',
-        patientId: patient.patientId,
-        severity: emergencyDetails.severity
-      }
-    };
+      resourceId: savedPatient._id,
+      details: 'A&E Patient registration',
+      userId: req.user ? req.user._id : null
+    });
 
-    const savedLog = await createAuditLog(auditLog);
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: 'Patient registered successfully for A&E',
       data: {
-        patientId: patient.patientId,
-        mongoId: patient._id,
-        name: `${patient.personalInfo.firstName} ${patient.personalInfo.lastName}`,
-        registrationType: patient.registrationType,
-        severity: emergencyDetails.severity,
-        registrationDate: patient.createdAt,
-        auditLogCreated: !!savedLog
+        patientId: savedPatient._id,
+        registrationType: savedPatient.registrationType,
+        severity: emergencyDetails.severity
       }
     });
 
@@ -137,14 +110,14 @@ const registerAEPatient = async (req, res) => {
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
-        message: 'Validation Error',
-        errors: Object.values(error.errors).map(err => err.message)
+        error: 'Validation Error',
+        details: error.message
       });
     }
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: 'Error registering A&E patient',
-      error: error.message
+      error: 'Server Error',
+      details: error.message
     });
   }
 };
