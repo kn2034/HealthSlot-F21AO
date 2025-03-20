@@ -86,10 +86,22 @@ pipeline {
                 script {
                     try {
                         sh '''
+                            # Check if Docker is available
                             if ! command -v docker &> /dev/null; then
-                                echo "Docker is not installed. Please install Docker to continue."
+                                echo "Docker command not found. Please ensure Docker Desktop is installed and running."
                                 exit 1
                             fi
+                            
+                            # Check Docker daemon connection
+                            if ! docker info &> /dev/null; then
+                                echo "Cannot connect to Docker daemon. Please ensure Docker Desktop is running."
+                                exit 1
+                            fi
+                            
+                            # Set Docker socket path for macOS
+                            export DOCKER_HOST="unix://${HOME}/Library/Containers/com.docker.docker/Data/docker-cli.sock"
+                            
+                            # Build the Docker image
                             docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
                         '''
                     } catch (Exception e) {
