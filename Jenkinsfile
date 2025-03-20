@@ -84,7 +84,19 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .'
+                    try {
+                        sh '''
+                            if ! command -v docker &> /dev/null; then
+                                echo "Docker is not installed. Please install Docker to continue."
+                                exit 1
+                            fi
+                            docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                        '''
+                    } catch (Exception e) {
+                        echo "Failed to build Docker image: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        error("Docker build failed")
+                    }
                 }
             }
         }
