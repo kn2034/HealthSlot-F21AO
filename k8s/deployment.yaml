@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: healthslot-app
+  namespace: healthslot
+  labels:
+    app: healthslot
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: healthslot
+  template:
+    metadata:
+      labels:
+        app: healthslot
+    spec:
+      containers:
+      - name: healthslot-app
+        image: healthslot-app:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: healthslot-secrets
+              key: mongodb-uri 

@@ -8,9 +8,9 @@ const authRoutes = require('./src/routes/auth.routes');
 const admissionRoutes = require('./src/routes/admission.routes');
 const wardRoutes = require('./src/routes/ward.routes');
 const transferRoutes = require('./src/routes/transfer.routes');
-const testRegistrationRoutes = require('./src/routes/testRegistration.routes');
-const labTestRoutes = require('./src/routes/labTest.routes');
+const labTestRoutes = require('./src/routes/labTest');
 const testResultRoutes = require('./src/routes/testResult.routes');
+const dischargeRoutes = require('./src/routes/discharge.routes');
 
 dotenv.config();
 
@@ -31,9 +31,9 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/admissions', admissionRoutes);
 app.use('/api/wards', wardRoutes);
 app.use('/api/transfers', transferRoutes);
-app.use('/api/lab', testRegistrationRoutes);
-app.use('/api/lab', labTestRoutes);
-app.use('/api/lab', testResultRoutes);
+app.use('/api/lab/tests', labTestRoutes);
+app.use('/api/lab/results', testResultRoutes);
+app.use('/api/discharges', dischargeRoutes);
 
 // Basic route for testing
 app.get('/', (req, res) => {
