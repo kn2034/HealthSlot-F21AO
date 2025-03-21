@@ -1,3 +1,4 @@
+// Webhook test 2 - Testing automatic trigger
 // Webhook test - This comment is to verify GitHub webhook integration
 pipeline {
     agent any
