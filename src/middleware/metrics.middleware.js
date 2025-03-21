@@ -1,47 +1,50 @@
-const responseTime = require('response-time');
 const client = require('prom-client');
-
-// Create a Registry to register metrics
-const register = new client.Registry();
+const collectDefaultMetrics = client.collectDefaultMetrics;
 
 // Create metrics
-const httpRequestDuration = new client.Histogram({
+const httpRequestDurationMicroseconds = new client.Histogram({
     name: 'http_request_duration_seconds',
     help: 'Duration of HTTP requests in seconds',
-    labelNames: ['method', 'route', 'status_code'],
-    buckets: [0.1, 0.5, 1, 2, 5]
+    labelNames: ['method', 'route', 'code'],
+    buckets: [0.1, 0.5, 1, 5]
 });
 
-const httpRequestTotal = new client.Counter({
+const totalRequests = new client.Counter({
     name: 'http_requests_total',
     help: 'Total number of HTTP requests',
-    labelNames: ['method', 'route', 'status_code']
+    labelNames: ['method', 'route', 'code']
 });
 
-// Register metrics
-register.registerMetric(httpRequestDuration);
-register.registerMetric(httpRequestTotal);
+// Initialize default metrics
+collectDefaultMetrics();
 
 // Middleware function
-const metricsMiddleware = responseTime((req, res, time) => {
-    if (req.url !== '/metrics') {
-        httpRequestDuration
-            .labels(req.method, req.url, res.statusCode)
-            .observe(time / 1000);
-        
-        httpRequestTotal
-            .labels(req.method, req.url, res.statusCode)
-            .inc();
-    }
-});
+const metricsMiddleware = (req, res, next) => {
+    const start = Date.now();
 
-// Metrics endpoint
-const getMetrics = async (req, res) => {
-    res.set('Content-Type', register.contentType);
-    res.end(await register.metrics());
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        httpRequestDurationMicroseconds
+            .labels(req.method, req.route?.path || req.path, res.statusCode)
+            .observe(duration / 1000);
+        
+        totalRequests
+            .labels(req.method, req.route?.path || req.path, res.statusCode)
+            .inc();
+    });
+
+    next();
 };
 
-module.exports = {
-    metricsMiddleware,
-    getMetrics
-}; 
+// Metrics endpoint handler
+const getMetrics = async (req, res) => {
+    res.set('Content-Type', client.register.contentType);
+    res.end(await client.register.metrics());
+};
+
+// Health check endpoint handler
+const healthCheck = (req, res) => {
+    res.status(200).json({ status: 'UP' });
+};
+
+module.exports = { metricsMiddleware, getMetrics, healthCheck }; 

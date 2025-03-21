@@ -2,7 +2,6 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../../app');
-const Patient = require('../models/Patient');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
@@ -69,6 +68,44 @@ beforeEach(async () => {
     process.env.JWT_SECRET || 'your-secret-key',
     { expiresIn: '1h' }
   );
+});
+
+describe('Patient API Tests', () => {
+  beforeAll(async () => {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/healthslot-test', {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+  });
+
+  afterAll(async () => {
+    await mongoose.connection.close();
+  });
+
+  test('should create a new patient', async () => {
+    const response = await request(app)
+      .post('/api/patients')
+      .send({
+        name: 'John Doe',
+        age: 30,
+        gender: 'Male',
+        contact: '1234567890',
+        address: '123 Main St'
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data).toHaveProperty('_id');
+  });
+
+  test('should get all patients', async () => {
+    const response = await request(app)
+      .get('/api/patients');
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(Array.isArray(response.body.data)).toBe(true);
+  });
 });
 
 describe('Patient Registration API Tests', () => {
