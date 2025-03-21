@@ -140,7 +140,7 @@ pipeline {
     
     post {
         always {
-            node {
+            node('any') {
                 // Clean workspace inside node context
                 catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
                     cleanWs()
