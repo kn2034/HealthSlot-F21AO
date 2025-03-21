@@ -3,8 +3,10 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../../app');
 const Patient = require('../models/Patient');
+const jwt = require('jsonwebtoken');
 
 let mongoServer;
+let authToken;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -18,6 +20,13 @@ beforeAll(async () => {
     useNewUrlParser: true,
     useUnifiedTopology: true
   });
+
+  // Generate a test token
+  authToken = jwt.sign(
+    { id: 'test-user', role: 'doctor' },
+    process.env.JWT_SECRET || 'your-secret-key',
+    { expiresIn: '1h' }
+  );
 });
 
 afterAll(async () => {
@@ -63,6 +72,7 @@ describe('Patient Registration API Tests', () => {
 
       const response = await request(app)
         .post('/api/patients/register-opd')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(validPatient);
 
       expect(response.status).toBe(201);
@@ -81,6 +91,7 @@ describe('Patient Registration API Tests', () => {
 
       const response = await request(app)
         .post('/api/patients/register-opd')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(invalidPatient);
 
       expect(response.status).toBe(400);
@@ -127,6 +138,7 @@ describe('Patient Registration API Tests', () => {
 
       const response = await request(app)
         .post('/api/patients/register-ae')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(validPatient);
 
       expect(response.status).toBe(201);
@@ -167,6 +179,7 @@ describe('Patient Registration API Tests', () => {
       // First registration
       const firstResponse = await request(app)
         .post('/api/patients/register-opd')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(patient);
       
       expect(firstResponse.status).toBe(201);
@@ -175,6 +188,7 @@ describe('Patient Registration API Tests', () => {
       // Attempt duplicate registration
       const duplicateResponse = await request(app)
         .post('/api/patients/register-opd')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(patient);
 
       expect(duplicateResponse.status).toBe(400);
@@ -211,6 +225,7 @@ describe('Patient Registration API Tests', () => {
 
       const response = await request(app)
         .post('/api/patients/register-opd')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(patient);
 
       expect(response.status).toBe(400);
@@ -244,6 +259,7 @@ describe('Patient Registration API Tests', () => {
 
       const response = await request(app)
         .post('/api/patients/register-opd')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(patient);
 
       expect(response.status).toBe(400);
