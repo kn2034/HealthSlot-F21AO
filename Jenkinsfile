@@ -1,4 +1,6 @@
 pipeline {
+    // This Jenkinsfile is used for automated CI/CD of the HealthSlot project
+    // Monitored branches: main (production), develop (staging), qa (testing)
     agent {
         docker {
             image 'node:16'
