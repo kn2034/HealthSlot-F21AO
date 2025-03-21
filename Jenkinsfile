@@ -52,7 +52,11 @@ pipeline {
         
         stage('Install Dependencies') {
             steps {
-                sh 'npm ci'
+                script {
+                    // Remove node_modules and package-lock.json for clean install
+                    sh 'rm -rf node_modules package-lock.json'
+                    sh 'npm install'
+                }
             }
         }
         
@@ -173,7 +177,7 @@ pipeline {
     
     post {
         always {
-            node('any') {
+            script {
                 cleanWs()
                 archiveArtifacts artifacts: 'logs/**/*.log', allowEmptyArchive: true
             }
