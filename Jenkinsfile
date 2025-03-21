@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    triggers {
+        githubPush()
+    }
+    
     environment {
         DOCKER_IMAGE = 'kirananarayanak/healthslot-app'
         DOCKER_TAG = "${BUILD_NUMBER}"
