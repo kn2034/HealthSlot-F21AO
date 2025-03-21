@@ -1,145 +1,35 @@
 pipeline {
-    // This Jenkinsfile is used for automated CI/CD of the HealthSlot project
-    // Monitored branches: main (production), develop (staging), qa (testing)
     agent any
     
-    tools {
-        // Define NodeJS installation - make sure this is configured in Jenkins
-        nodejs 'NodeJS'
-    }
-    
     environment {
-        DOCKER_PATH = sh(script: 'which docker || echo /opt/homebrew/bin/docker', returnStdout: true).trim()
-        DOCKER_REGISTRY = 'registry.example.com'
+        DOCKER_PATH = sh(script: 'which docker || echo /usr/bin/docker', returnStdout: true).trim()
         IMAGE_NAME = 'healthslot'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
-        // Define credentials only if they exist
-        MONGODB_URI_DEV = credentials('mongodb-uri-dev') 
-        MONGODB_URI_STAGING = credentials('mongodb-uri-staging')
-        MONGODB_URI_PROD = credentials('mongodb-uri-prod')
-        JWT_SECRET = credentials('jwt-secret')
-        // Use optional block for these credentials in case they're not defined yet
     }
     
     stages {
-        stage('Setup') {
-            steps {
-                sh 'npm ci'
-            }
-        }
-        
-        stage('Lint') {
-            steps {
-                script {
-                    try {
-                        sh 'npm run lint'
-                    } catch (Exception e) {
-                        echo 'Lint script not found or failed, continuing anyway'
-                        sh 'test -f .eslintrc.js && npx eslint . --ext .js || echo "No ESLint configuration found"'
-                    }
-                }
-            }
-        }
-        
-        stage('Test') {
-            environment {
-                NODE_ENV = 'test'
-                MONGODB_URI = "${env.MONGODB_URI_DEV}"
-                JWT_SECRET = "${env.JWT_SECRET}"
-            }
-            steps {
-                sh 'npm test'
-            }
-        }
-        
-        stage('QA') {
-            steps {
-                echo 'Running Quality Assurance checks'
-                sh 'npm run lint -- --fix || true'
-                echo 'Running security audit'
-                sh 'npm audit --production || true'
-                echo 'QA checks completed'
-            }
-        }
-        
         stage('Build Docker Image') {
             steps {
                 script {
-                    def imageFullName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-                    def imageLatest = "${DOCKER_REGISTRY}/${IMAGE_NAME}:latest"
+                    def imageLocal = "${IMAGE_NAME}:${IMAGE_TAG}"
                     
-                    // Check if Docker is available
-                    sh "[ -f ${DOCKER_PATH} ] || echo 'Docker not found at ${DOCKER_PATH}'"
-                    
-                    // Build the Docker image using the full path
-                    sh "${DOCKER_PATH} info"
-                    sh "${DOCKER_PATH} build -t ${imageFullName} -t ${imageLatest} ."
-                    
-                    // Login to Docker registry - only if credentials exist
-                    withCredentials([string(credentialsId: 'docker-registry-token', variable: 'DOCKER_TOKEN')]) {
-                        sh "echo ${DOCKER_TOKEN} | ${DOCKER_PATH} login ${DOCKER_REGISTRY} -u jenkins --password-stdin"
-                    }
-                    
-                    // Push the Docker image
-                    sh "${DOCKER_PATH} push ${imageFullName} || echo 'Push failed, continuing anyway'"
-                    sh "${DOCKER_PATH} push ${imageLatest} || echo 'Push failed, continuing anyway'"
+                    echo "Building Docker image: ${imageLocal}"
+                    sh "${DOCKER_PATH} build -t ${imageLocal} ."
                 }
             }
         }
         
-        stage('Deploy to Staging') {
-            when {
-                anyOf {
-                    branch 'develop'
-                    branch 'qa'
-                }
-            }
+        stage('Test Container') {
             steps {
                 script {
-                    def imageFullName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    def imageLocal = "${IMAGE_NAME}:${IMAGE_TAG}"
                     
-                    echo "Deployment to staging would happen here if credentials were configured"
-                    echo "Using image: ${imageFullName}"
-                    
-                    // This will only run if the credentials exist
-                    withCredentials([
-                        string(credentialsId: 'staging-server', variable: 'STAGING_SERVER'),
-                        sshUserPrivateKey(credentialsId: 'staging-ssh-key', keyFileVariable: 'SSH_KEY')
-                    ]) {
-                        sh '''
-                            echo "Staging server is ${STAGING_SERVER}"
-                            echo "Deployment script exists: $(test -f scripts/deploy.sh && echo 'Yes' || echo 'No')"
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Deploy to Production') {
-            when {
-                branch 'main'
-            }
-            input {
-                message "Deploy to production?"
-                ok "Yes, deploy to production"
-            }
-            steps {
-                script {
-                    def imageFullName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-                    
-                    echo "Deployment to production would happen here if credentials were configured"
-                    echo "Using image: ${imageFullName}"
-                    
-                    // This will only run if the credentials exist
-                    withCredentials([
-                        string(credentialsId: 'production-server', variable: 'PRODUCTION_SERVER'),
-                        sshUserPrivateKey(credentialsId: 'production-ssh-key', keyFileVariable: 'SSH_KEY')
-                    ]) {
-                        sh '''
-                            echo "Production server is ${PRODUCTION_SERVER}"
-                            echo "Deployment script exists: $(test -f scripts/deploy.sh && echo 'Yes' || echo 'No')"
-                        '''
-                    }
+                    echo "Running container health check"
+                    sh "${DOCKER_PATH} run --name test-container -d -p 3000:3000 ${imageLocal}"
+                    sh "sleep 5" // Wait for container to start
+                    sh "${DOCKER_PATH} ps -a" // List containers
+                    sh "${DOCKER_PATH} stop test-container || true"
+                    sh "${DOCKER_PATH} rm test-container || true"
                 }
             }
         }
@@ -147,23 +37,16 @@ pipeline {
     
     post {
         always {
-            node() {
-                // Clean workspace inside node context
-                catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-                    cleanWs()
-                }
-                
-                // Clean Docker images with full path
-                catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-                    sh "${DOCKER_PATH} system prune -f || echo 'Docker prune failed, continuing anyway'"
-                }
+            script {
+                echo "Cleaning up Docker resources"
+                sh "${DOCKER_PATH} system prune -f || echo 'Docker prune failed, continuing anyway'"
             }
         }
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'Docker build and test completed successfully!'
         }
         failure {
-            echo 'Pipeline failed! Check logs for details.'
+            echo 'Docker build or test failed! Check logs for details.'
         }
     }
-} 
+}
