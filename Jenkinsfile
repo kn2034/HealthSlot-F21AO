@@ -79,7 +79,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                        docker run --name test-container -d -p 3000:3000 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        docker run --name test-container -d -p 3001:3000 ${DOCKER_IMAGE}:${DOCKER_TAG}
                         sleep 5
                         docker ps -a
                         docker stop test-container || true
