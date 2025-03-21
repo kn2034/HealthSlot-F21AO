@@ -75,7 +75,7 @@ pipeline {
         
         stage('Test') {
             steps {
-                sh 'npm test'
+                sh 'npm test -- --config=jest.config.js'
             }
         }
         
@@ -107,7 +107,7 @@ pipeline {
     
     post {
         always {
-            node('any') {
+            node(null) {
                 script {
                     cleanWs()
                     archiveArtifacts artifacts: 'coverage/**/*', allowEmptyArchive: true
