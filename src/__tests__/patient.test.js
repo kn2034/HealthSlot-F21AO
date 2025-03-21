@@ -1,26 +1,15 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../../app');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const dbHandler = require('./setup');
 
-let mongoServer;
 let authToken;
 let testUser;
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  const mongoUri = mongoServer.getUri();
-  
-  // Disconnect from any existing connection
-  await mongoose.disconnect();
-  
-  // Connect to the in-memory database
-  await mongoose.connect(mongoUri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  });
+  await dbHandler.connect();
 
   // Create a test user
   testUser = await User.create({
@@ -32,25 +21,20 @@ beforeAll(async () => {
     department: 'General Medicine'
   });
 
-  // Generate a test token with the actual user ID
+  // Generate a test token
   authToken = jwt.sign(
     { userId: testUser._id, role: testUser.role },
-    process.env.JWT_SECRET || 'your-secret-key',
+    process.env.JWT_SECRET || 'test-secret-key',
     { expiresIn: '1h' }
   );
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await dbHandler.closeDatabase();
 });
 
 beforeEach(async () => {
-  // Clear the database before each test
-  const collections = mongoose.connection.collections;
-  for (const key in collections) {
-    await collections[key].deleteMany();
-  }
+  await dbHandler.clearDatabase();
   
   // Recreate the test user
   testUser = await User.create({
@@ -62,10 +46,10 @@ beforeEach(async () => {
     department: 'General Medicine'
   });
   
-  // Regenerate the token with the new user ID
+  // Regenerate the token
   authToken = jwt.sign(
     { userId: testUser._id, role: testUser.role },
-    process.env.JWT_SECRET || 'your-secret-key',
+    process.env.JWT_SECRET || 'test-secret-key',
     { expiresIn: '1h' }
   );
 });

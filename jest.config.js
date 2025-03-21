@@ -5,5 +5,13 @@ module.exports = {
   forceExit: true,
   clearMocks: true,
   resetMocks: true,
-  restoreMocks: true
+  restoreMocks: true,
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.js'],
+  testEnvironmentOptions: {
+    NODE_ENV: 'test'
+  },
+  globals: {
+    'process.env.JWT_SECRET': 'test-secret-key',
+    'process.env.MONGODB_URI': 'mongodb://localhost:27017/test'
+  }
 }; 
