@@ -39,25 +39,25 @@ describe('Patient Registration API Tests', () => {
     it('should successfully register an OPD patient', async () => {
       const validPatient = {
         personalInfo: {
-          firstName: "Test",
-          lastName: "Patient",
-          dateOfBirth: "1990-01-01",
-          gender: "Male",
-          bloodGroup: "O+"
+          firstName: 'Test',
+          lastName: 'Patient',
+          dateOfBirth: '1990-01-01',
+          gender: 'Male',
+          bloodGroup: 'O+'
         },
         contactInfo: {
-          email: "test.patient@email.com",
-          phone: "9876543210",
+          email: 'test.patient@email.com',
+          phone: '9876543210',
           address: {
-            city: "Mumbai",
-            state: "Maharashtra",
-            pincode: "400001"
+            city: 'Mumbai',
+            state: 'Maharashtra',
+            pincode: '400001'
           }
         },
         emergencyContact: {
-          name: "Emergency Contact",
-          relationship: "Spouse",
-          phone: "9876543211"
+          name: 'Emergency Contact',
+          relationship: 'Spouse',
+          phone: '9876543211'
         }
       };
 
@@ -74,7 +74,7 @@ describe('Patient Registration API Tests', () => {
     it('should fail when required fields are missing', async () => {
       const invalidPatient = {
         personalInfo: {
-          firstName: "Test"
+          firstName: 'Test'
           // Missing required fields
         }
       };
@@ -94,30 +94,30 @@ describe('Patient Registration API Tests', () => {
     it('should successfully register an A&E patient', async () => {
       const validPatient = {
         personalInfo: {
-          firstName: "Emergency",
-          lastName: "Patient",
-          dateOfBirth: "1985-05-15",
-          gender: "Female",
-          bloodGroup: "B+"
+          firstName: 'Emergency',
+          lastName: 'Patient',
+          dateOfBirth: '1985-05-15',
+          gender: 'Female',
+          bloodGroup: 'B+'
         },
         contactInfo: {
-          phone: "9876543212",
+          phone: '9876543212',
           address: {
-            city: "Mumbai",
-            state: "Maharashtra"
+            city: 'Mumbai',
+            state: 'Maharashtra'
           }
         },
         emergencyContact: {
-          name: "Emergency Contact",
-          relationship: "Sibling",
-          phone: "9876543213"
+          name: 'Emergency Contact',
+          relationship: 'Sibling',
+          phone: '9876543213'
         },
         emergencyDetails: {
-          injuryType: "Head Trauma",
-          arrivalMode: "Ambulance",
-          chiefComplaint: "Severe head injury from accident",
+          injuryType: 'Head Trauma',
+          arrivalMode: 'Ambulance',
+          chiefComplaint: 'Severe head injury from accident',
           vitalSigns: {
-            bloodPressure: "140/90",
+            bloodPressure: '140/90',
             pulseRate: 95,
             temperature: 37.5,
             oxygenSaturation: 94
@@ -142,25 +142,25 @@ describe('Patient Registration API Tests', () => {
     it('should prevent duplicate patient registration with same phone number', async () => {
       const patient = {
         personalInfo: {
-          firstName: "Test",
-          lastName: "Patient",
-          dateOfBirth: "1990-01-01",
-          gender: "Male",
-          bloodGroup: "O+"
+          firstName: 'Test',
+          lastName: 'Patient',
+          dateOfBirth: '1990-01-01',
+          gender: 'Male',
+          bloodGroup: 'O+'
         },
         contactInfo: {
-          email: "test.patient@email.com",
-          phone: "9876543210",
+          email: 'test.patient@email.com',
+          phone: '9876543210',
           address: {
-            city: "Mumbai",
-            state: "Maharashtra",
-            pincode: "400001"
+            city: 'Mumbai',
+            state: 'Maharashtra',
+            pincode: '400001'
           }
         },
         emergencyContact: {
-          name: "Emergency Contact",
-          relationship: "Spouse",
-          phone: "9876543211"
+          name: 'Emergency Contact',
+          relationship: 'Spouse',
+          phone: '9876543211'
         }
       };
 
@@ -188,24 +188,24 @@ describe('Patient Registration API Tests', () => {
     it('should validate phone number format', async () => {
       const patient = {
         personalInfo: {
-          firstName: "Test",
-          lastName: "Patient",
-          dateOfBirth: "1990-01-01",
-          gender: "Male",
-          bloodGroup: "O+"
+          firstName: 'Test',
+          lastName: 'Patient',
+          dateOfBirth: '1990-01-01',
+          gender: 'Male',
+          bloodGroup: 'O+'
         },
         contactInfo: {
-          email: "test.patient@email.com",
-          phone: "123", // Invalid phone number
+          email: 'test.patient@email.com',
+          phone: '123', // Invalid phone number
           address: {
-            city: "Mumbai",
-            state: "Maharashtra"
+            city: 'Mumbai',
+            state: 'Maharashtra'
           }
         },
         emergencyContact: {
-          name: "Emergency Contact",
-          relationship: "Spouse",
-          phone: "9876543211"
+          name: 'Emergency Contact',
+          relationship: 'Spouse',
+          phone: '9876543211'
         }
       };
 
@@ -221,24 +221,24 @@ describe('Patient Registration API Tests', () => {
     it('should validate email format', async () => {
       const patient = {
         personalInfo: {
-          firstName: "Test",
-          lastName: "Patient",
-          dateOfBirth: "1990-01-01",
-          gender: "Male",
-          bloodGroup: "O+"
+          firstName: 'Test',
+          lastName: 'Patient',
+          dateOfBirth: '1990-01-01',
+          gender: 'Male',
+          bloodGroup: 'O+'
         },
         contactInfo: {
-          email: "invalid-email", // Invalid email
-          phone: "9876543210",
+          email: 'invalid-email', // Invalid email
+          phone: '9876543210',
           address: {
-            city: "Mumbai",
-            state: "Maharashtra"
+            city: 'Mumbai',
+            state: 'Maharashtra'
           }
         },
         emergencyContact: {
-          name: "Emergency Contact",
-          relationship: "Spouse",
-          phone: "9876543211"
+          name: 'Emergency Contact',
+          relationship: 'Spouse',
+          phone: '9876543211'
         }
       };
 
