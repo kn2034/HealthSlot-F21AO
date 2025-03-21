@@ -19,13 +19,9 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files and install production dependencies
 COPY package*.json ./
-
-# Install production dependencies only
-RUN npm ci --only=production
-
-# Copy application files from builder stage
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/app.js ./
 COPY --from=builder /app/server.js ./
@@ -34,7 +30,8 @@ COPY --from=builder /app/server.js ./
 COPY .env* ./
 
 # Create non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app
 USER appuser
 
 # Set environment variables
@@ -45,7 +42,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/api/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/api/health || exit 1
 
 # Start application
 CMD ["npm", "start"]
