@@ -219,7 +219,7 @@ describe('Patient Registration API Tests', () => {
 
       expect(duplicateResponse.status).toBe(400);
       expect(duplicateResponse.body.success).toBe(false);
-      expect(duplicateResponse.body.message).toBe('Patient with this phone number already exists');
+      expect(duplicateResponse.body.message).toBe('Patient with this phone already exists');
     });
   });
 
