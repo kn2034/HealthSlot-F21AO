@@ -37,14 +37,14 @@
     "morgan": "^1.10.0",
     "prom-client": "^15.1.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.0",
-    "winston": "^3.11.0"
+    "swagger-ui-express": "^5.0.0"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
     "jest": "^29.5.0",
-    "mongodb-memory-server": "^9.1.6",
+    "mongodb-memory-server": "^9.5.0",
     "nodemon": "^3.1.0",
-    "supertest": "^6.3.4"
+    "supertest": "^6.3.4",
+    "winston": "^3.17.0"
   }
 }

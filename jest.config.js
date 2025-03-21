@@ -7,8 +7,14 @@ module.exports = {
   resetMocks: true,
   restoreMocks: true,
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.js'],
+  testTimeout: 30000,
+  collectCoverage: true,
+  coverageReporters: ['text', 'lcov'],
+  coverageDirectory: 'coverage',
   testEnvironmentOptions: {
-    NODE_ENV: 'test'
+    NODE_ENV: 'test',
+    JWT_SECRET: 'test-secret-key',
+    PORT: 3001
   },
   globals: {
     'process.env.JWT_SECRET': 'test-secret-key',

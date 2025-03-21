@@ -19,38 +19,34 @@ const logger = winston.createLogger({
   level: 'info',
   format: winston.format.json(),
   transports: [
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' })
-  ]
+    new winston.transports.Console({
+      format: winston.format.simple(),
+    }),
+  ],
 });
 
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.simple()
-  }));
-}
-
+// Load env vars
 dotenv.config();
 
-// Connect to database
-connectDB();
-
+// Create Express app
 const app = express();
 
-// Middleware
+// Body parser
 app.use(express.json());
+
+// Metrics middleware
 app.use(metricsMiddleware);
+
+// API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'healthy' });
+  res.status(200).json({ status: 'ok' });
 });
 
 // Metrics endpoint
 app.get('/metrics', getMetrics);
-
-// Swagger Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -67,17 +63,23 @@ app.get('/', (req, res) => {
   res.json({ message: 'Server is running!' });
 });
 
-// Error handling
-app.use((err, req, res) => {
-  logger.error('Unhandled error:', { error: err.stack });
-  res.status(500).json({ error: 'Something went wrong!' });
+// Error handling middleware
+app.use((err, req, res, next) => {
+  logger.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
-});
+// Only connect to MongoDB if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  connectDB();
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    logger.info(`Server is running on port ${PORT}`);
+  });
+}
 
-// Don't start the server here
-// Instead, export the app
 module.exports = app; 
