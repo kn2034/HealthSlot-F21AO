@@ -83,6 +83,7 @@ pipeline {
                         docker run --name test-container -d -p 3001:3000 ${DOCKER_IMAGE}:${DOCKER_TAG}
                         sleep 5
                         docker ps -a
+                        docker logs test-container
                         docker stop test-container || true
                         docker rm test-container || true
                     """
