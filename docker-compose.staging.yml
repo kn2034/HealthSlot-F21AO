@@ -2,27 +2,23 @@ version: '3.8'
 
 services:
   app:
-    image: kirananarayanak/healthslot-app:latest
-    container_name: healthslot-app-staging
-    restart: unless-stopped
+    image: ${DOCKER_IMAGE}:${DOCKER_TAG}
+    container_name: healthslot-staging
     ports:
-      - "3001:3000"
+      - "3000:3000"
     environment:
       - NODE_ENV=staging
-      - PORT=3000
-      - MONGODB_URI=mongodb://mongodb:27017/healthslot-staging
+      - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
-    depends_on:
-      - mongodb
-    networks:
-      - healthslot-network
-    volumes:
-      - ./logs:/app/logs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - healthslot-network
 
   mongodb:
     image: mongo:latest
