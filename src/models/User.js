@@ -4,67 +4,50 @@ const bcrypt = require('bcryptjs');
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
-    required: [true, 'Username is required'],
+    required: true,
     unique: true,
     trim: true,
-    minlength: [3, 'Username must be at least 3 characters long']
   },
   fullName: {
     type: String,
-    required: [true, 'Full name is required'],
-    trim: true
+    required: true,
+    trim: true,
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
+    required: true,
     unique: true,
     trim: true,
     lowercase: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
-    minlength: [8, 'Password must be at least 8 characters long']
+    required: true,
+    minlength: 6,
   },
   role: {
     type: String,
-    enum: ['admin', 'doctor', 'nurse', 'receptionist'],
-    required: [true, 'Role is required']
+    enum: ['admin', 'doctor', 'nurse', 'lab_technician'],
+    required: true,
   },
   department: {
     type: String,
-    required: [true, 'Department is required'],
-    enum: ['Medicine', 'Surgery', 'Pediatrics', 'Cardiology', 'Neurology', 'Orthopedics', 'Emergency', 'ICU', 'Administration', 'General']
+    required: true,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-    immutable: true
-  },
-  status: {
-    type: String,
-    enum: ['active', 'inactive', 'suspended'],
-    default: 'active'
-  }
 }, {
-  timestamps: true // This automatically adds createdAt and updatedAt fields
+  timestamps: true,
 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
+  if (!this.isModified('password')) {
+    return next();
   }
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Method to compare password
+// Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };

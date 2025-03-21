@@ -1,146 +1,94 @@
 const Patient = require('../models/Patient');
-const { validateOPDRegistration } = require('../validation/patientValidation');
+const Joi = require('joi');
 
-const registerOPDPatient = async (req, res) => {
-  try {
-    // Validate request data
-    const { error } = validateOPDRegistration(req.body);
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation Error',
-        errors: error.details.map(detail => detail.message)
-      });
-    }
+// Validation schemas
+const emergencyDetailsSchema = Joi.object({
+  chiefComplaint: Joi.string().required(),
+  severity: Joi.string().valid('low', 'medium', 'high').required(),
+  vitalSigns: Joi.object({
+    bloodPressure: Joi.string(),
+    heartRate: Joi.string(),
+    temperature: Joi.string(),
+    oxygenSaturation: Joi.string()
+  })
+});
 
-    // Create new patient
-    const patientData = {
-      ...req.body,
-      registrationType: 'OPD'
-    };
-    
-    // Check for existing patient
-    const existingPatient = await Patient.findOne({
-      'contactInfo.phone': patientData.contactInfo.phone
-    });
+const validateAERegistration = (data) => {
+  const schema = Joi.object({
+    patientId: Joi.string().required(),
+    fullName: Joi.string().required(),
+    dateOfBirth: Joi.date().required(),
+    gender: Joi.string().valid('male', 'female', 'other').required(),
+    email: Joi.string().email().required(),
+    phone: Joi.string().required(),
+    address: Joi.object({
+      street: Joi.string(),
+      city: Joi.string(),
+      state: Joi.string(),
+      zipCode: Joi.string(),
+      country: Joi.string()
+    }),
+    emergencyContact: Joi.object({
+      name: Joi.string().required(),
+      relationship: Joi.string().required(),
+      phone: Joi.string().required()
+    }),
+    emergencyDetails: emergencyDetailsSchema
+  });
 
-    if (existingPatient) {
-      return res.status(400).json({
-        success: false,
-        message: 'Patient with this phone number already exists'
-      });
-    }
-
-    const patient = new Patient(patientData);
-    await patient.save();
-
-    // Create audit log
-    const auditLog = {
-      action: 'REGISTER',
-      resourceType: 'Patient',
-      resourceId: patient._id,
-      changes: {
-        registrationType: 'OPD',
-        patientId: patient.patientId
-      }
-    };
-
-    const savedLog = await createAuditLog(auditLog);
-
-    res.status(201).json({
-      success: true,
-      message: 'Patient registered successfully for OPD',
-      data: {
-        patientId: patient.patientId,
-        mongoId: patient._id,
-        name: `${patient.personalInfo.firstName} ${patient.personalInfo.lastName}`,
-        registrationType: patient.registrationType,
-        registrationDate: patient.createdAt,
-        auditLogCreated: !!savedLog
-      }
-    });
-
-  } catch (error) {
-    console.error('Error in registerOPDPatient:', error);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation Error',
-        errors: Object.values(error.errors).map(err => err.message)
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Error registering OPD patient',
-      error: error.message
-    });
-  }
+  return schema.validate(data);
 };
+
+const validateOPDRegistration = (data) => {
+  const schema = Joi.object({
+    patientId: Joi.string().required(),
+    fullName: Joi.string().required(),
+    dateOfBirth: Joi.date().required(),
+    gender: Joi.string().valid('male', 'female', 'other').required(),
+    email: Joi.string().email().required(),
+    phone: Joi.string().required(),
+    address: Joi.object({
+      street: Joi.string(),
+      city: Joi.string(),
+      state: Joi.string(),
+      zipCode: Joi.string(),
+      country: Joi.string()
+    }),
+    emergencyContact: Joi.object({
+      name: Joi.string().required(),
+      relationship: Joi.string().required(),
+      phone: Joi.string().required()
+    })
+  });
+
+  return schema.validate(data);
+};
+
+// Register A&E patient
 const registerAEPatient = async (req, res) => {
   try {
-    // Validate request data
     const { error } = validateAERegistration(req.body);
     if (error) {
       return res.status(400).json({
         success: false,
-        message: 'Validation Error',
-        errors: error.details.map(detail => detail.message)
+        message: 'Validation error',
+        error: error.details[0].message
       });
     }
 
-    // Determine severity based on emergency details
-    const severity = determinePatientSeverity(req.body.emergencyDetails);
-
-    // Create new patient with severity
-    const patientData = {
+    const patient = new Patient({
       ...req.body,
-      registrationType: 'A&E',
-      emergencyDetails: {
-        ...req.body.emergencyDetails,
-        severity // Add the determined severity
-      }
-    };
+      status: 'active'
+    });
 
-    const patient = new Patient(patientData);
     await patient.save();
-
-    // Create audit log
-    const auditLog = {
-      action: 'REGISTER',
-      resourceType: 'Patient',
-      resourceId: patient._id,
-      changes: {
-        registrationType: 'AE',
-        patientId: patient.patientId,
-        severity: emergencyDetails.severity
-      }
-    };
-
-    const savedLog = await createAuditLog(auditLog);
 
     res.status(201).json({
       success: true,
-      message: 'Patient registered successfully for A&E',
-      data: {
-        patientId: patient.patientId,
-        mongoId: patient._id,
-        name: `${patient.personalInfo.firstName} ${patient.personalInfo.lastName}`,
-        registrationType: patient.registrationType,
-        severity: emergencyDetails.severity,
-        registrationDate: patient.createdAt,
-        auditLogCreated: !!savedLog
-      }
+      message: 'A&E patient registered successfully',
+      data: patient
     });
-
   } catch (error) {
-    console.error('Error in registerAEPatient:', error);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation Error',
-        errors: Object.values(error.errors).map(err => err.message)
-      });
-    }
     res.status(500).json({
       success: false,
       message: 'Error registering A&E patient',
@@ -149,7 +97,116 @@ const registerAEPatient = async (req, res) => {
   }
 };
 
+// Register OPD patient
+const registerOPDPatient = async (req, res) => {
+  try {
+    const { error } = validateOPDRegistration(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        error: error.details[0].message
+      });
+    }
+
+    const patient = new Patient({
+      ...req.body,
+      status: 'active'
+    });
+
+    await patient.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'OPD patient registered successfully',
+      data: patient
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error registering OPD patient',
+      error: error.message
+    });
+  }
+};
+
+// Get patient by ID
+const getPatientById = async (req, res) => {
+  try {
+    const patient = await Patient.findById(req.params.id);
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: patient
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching patient',
+      error: error.message
+    });
+  }
+};
+
+// Update patient
+const updatePatient = async (req, res) => {
+  try {
+    const patient = await Patient.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Patient updated successfully',
+      data: patient
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating patient',
+      error: error.message
+    });
+  }
+};
+
+// Get all patients
+const getAllPatients = async (req, res) => {
+  try {
+    const patients = await Patient.find({ status: 'active' });
+
+    res.status(200).json({
+      success: true,
+      data: patients
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching patients',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
+  registerAEPatient,
   registerOPDPatient,
-  registerAEPatient
+  getPatientById,
+  updatePatient,
+  getAllPatients
 }; 

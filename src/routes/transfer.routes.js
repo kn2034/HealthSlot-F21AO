@@ -49,4 +49,9 @@ const { protect, authorize } = require('../middleware/auth.middleware');
  */
 router.put('/transfer', protect, authorize('admin', 'doctor'), transferPatient);
 
+// Placeholder routes
+router.get('/', (req, res) => {
+  res.json({ message: 'Transfer routes working' });
+});
+
 module.exports = router; 

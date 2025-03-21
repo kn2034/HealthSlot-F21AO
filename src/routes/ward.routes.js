@@ -55,4 +55,9 @@ const { protect, authorize } = require('../middleware/auth.middleware');
  */
 router.post('/', protect, authorize('admin'), createWard);
 
+// Placeholder routes
+router.get('/', (req, res) => {
+  res.json({ message: 'Ward routes working' });
+});
+
 module.exports = router; 

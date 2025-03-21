@@ -2,34 +2,134 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_PATH = sh(script: 'which docker || echo /usr/bin/docker', returnStdout: true).trim()
-        IMAGE_NAME = 'healthslot'
-        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        DOCKER_IMAGE = 'kirananarayanak/healthslot-app'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+        JIRA_PROJECT = 'HEALTHSLOT'
+        NODE_VERSION = '18'
+    }
+    
+    tools {
+        nodejs 'NodeJS 18'
     }
     
     stages {
-        stage('Build Docker Image') {
+        stage('Checkout') {
             steps {
+                checkout scm
                 script {
-                    def imageLocal = "${IMAGE_NAME}:${IMAGE_TAG}"
-                    
-                    echo "Building Docker image: ${imageLocal}"
-                    sh "${DOCKER_PATH} build -t ${imageLocal} ."
+                    // Get JIRA issue key from branch name
+                    def branchName = env.BRANCH_NAME
+                    def matcher = branchName =~ /(HEALTHSLOT-\d+)/
+                    if (matcher) {
+                        env.JIRA_ISSUE_KEY = matcher[0][1]
+                    }
                 }
             }
         }
         
-        stage('Test Container') {
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm ci'
+            }
+        }
+        
+        stage('Lint') {
+            steps {
+                sh 'npm run lint'
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                sh 'npm test'
+                // Archive test results
+                archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
+            }
+        }
+        
+        stage('Build Docker Image') {
             steps {
                 script {
-                    def imageLocal = "${IMAGE_NAME}:${IMAGE_TAG}"
+                    // Build Docker image
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    docker.build("${DOCKER_IMAGE}:latest")
                     
-                    echo "Running container health check"
-                    sh "${DOCKER_PATH} run --name test-container -d -p 3000:3000 ${imageLocal}"
-                    sh "sleep 5" // Wait for container to start
-                    sh "${DOCKER_PATH} ps -a" // List containers
-                    sh "${DOCKER_PATH} stop test-container || true"
-                    sh "${DOCKER_PATH} rm test-container || true"
+                    // Push to Docker Hub
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
+                                                   usernameVariable: 'DOCKER_USERNAME', 
+                                                   passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh """
+                            docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}
+                            docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            docker push ${DOCKER_IMAGE}:latest
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Staging') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                script {
+                    // Deploy to staging environment
+                    sh """
+                        docker-compose -f docker-compose.staging.yml pull
+                        docker-compose -f docker-compose.staging.yml up -d
+                    """
+                }
+            }
+        }
+        
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    // Deploy to production environment
+                    sh """
+                        docker-compose -f docker-compose.production.yml pull
+                        docker-compose -f docker-compose.production.yml up -d
+                    """
+                }
+            }
+        }
+        
+        stage('Update JIRA') {
+            steps {
+                script {
+                    if (env.JIRA_ISSUE_KEY) {
+                        // Update JIRA issue with build information
+                        def jiraComment = """
+                            Build ${BUILD_NUMBER} completed successfully
+                            Status: ${currentBuild.result}
+                            Duration: ${currentBuild.durationString}
+                            Changes: ${currentBuild.changeSets}
+                        """
+                        
+                        // Use JIRA REST API to update the issue
+                        def response = httpRequest(
+                            url: "${JIRA_URL}/rest/api/2/issue/${env.JIRA_ISSUE_KEY}/comment",
+                            httpMode: 'POST',
+                            contentType: 'APPLICATION_JSON',
+                            headers: [
+                                [name: 'Authorization', value: "Basic ${JIRA_CREDENTIALS}"],
+                                [name: 'Content-Type', value: 'application/json']
+                            ],
+                            requestBody: """
+                                {
+                                    "body": "${jiraComment}"
+                                }
+                            """
+                        )
+                        
+                        if (response.status != 201) {
+                            error "Failed to update JIRA issue: ${response.content}"
+                        }
+                    }
                 }
             }
         }
@@ -37,16 +137,54 @@ pipeline {
     
     post {
         always {
-            script {
-                echo "Cleaning up Docker resources"
-                sh "${DOCKER_PATH} system prune -f || echo 'Docker prune failed, continuing anyway'"
-            }
+            // Clean up workspace
+            cleanWs()
         }
         success {
-            echo 'Docker build and test completed successfully!'
+            script {
+                if (env.JIRA_ISSUE_KEY) {
+                    // Update JIRA issue status to "Done" if deployment was successful
+                    def response = httpRequest(
+                        url: "${JIRA_URL}/rest/api/2/issue/${env.JIRA_ISSUE_KEY}/transitions",
+                        httpMode: 'POST',
+                        contentType: 'APPLICATION_JSON',
+                        headers: [
+                            [name: 'Authorization', value: "Basic ${JIRA_CREDENTIALS}"],
+                            [name: 'Content-Type', value: 'application/json']
+                        ],
+                        requestBody: """
+                            {
+                                "transition": {
+                                    "id": "31"
+                                }
+                            }
+                        """
+                    )
+                }
+            }
         }
         failure {
-            echo 'Docker build or test failed! Check logs for details.'
+            script {
+                if (env.JIRA_ISSUE_KEY) {
+                    // Update JIRA issue status to "Failed" if deployment failed
+                    def response = httpRequest(
+                        url: "${JIRA_URL}/rest/api/2/issue/${env.JIRA_ISSUE_KEY}/transitions",
+                        httpMode: 'POST',
+                        contentType: 'APPLICATION_JSON',
+                        headers: [
+                            [name: 'Authorization', value: "Basic ${JIRA_CREDENTIALS}"],
+                            [name: 'Content-Type', value: 'application/json']
+                        ],
+                        requestBody: """
+                            {
+                                "transition": {
+                                    "id": "41"
+                                }
+                            }
+                        """
+                    )
+                }
+            }
         }
     }
 }

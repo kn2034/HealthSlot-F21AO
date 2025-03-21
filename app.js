@@ -31,9 +31,9 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/admissions', admissionRoutes);
 app.use('/api/wards', wardRoutes);
 app.use('/api/transfers', transferRoutes);
-app.use('/api/lab', testRegistrationRoutes);
-app.use('/api/lab', labTestRoutes);
-app.use('/api/lab', testResultRoutes);
+app.use('/api/lab/registrations', testRegistrationRoutes);
+app.use('/api/lab/tests', labTestRoutes);
+app.use('/api/lab/results', testResultRoutes);
 
 // Basic route for testing
 app.get('/', (req, res) => {

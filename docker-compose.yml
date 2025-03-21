@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kirananarayanak/healthslot-app:latest
+    container_name: healthslot-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=${MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3000
+    depends_on:
+      - mongodb
+    networks:
+      - healthslot-network
+    volumes:
+      - ./src:/app/src
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:latest
+    container_name: healthslot-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - healthslot-network
+    restart: unless-stopped
+
+networks:
+  healthslot-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
