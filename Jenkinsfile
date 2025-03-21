@@ -75,7 +75,15 @@ pipeline {
         
         stage('Test') {
             steps {
-                sh 'npm test -- --config=jest.config.js'
+                script {
+                    try {
+                        sh 'npm test'
+                    } catch (err) {
+                        echo "Test execution failed: ${err.message}"
+                        currentBuild.result = 'FAILURE'
+                        error("Test execution failed")
+                    }
+                }
             }
         }
         
