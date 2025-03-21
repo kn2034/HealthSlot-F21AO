@@ -122,19 +122,18 @@ pipeline {
                     
                     // Enhanced cleanup
                     sh '''
-                        # Stop and remove any existing containers with these names
-                        docker-compose -f docker-compose.staging.yml down -v || true
-                        docker rm -f healthslot-staging healthslot-mongodb-staging || true
+                        # Stop all running containers that might conflict
+                        docker ps -q --filter "name=healthslot-" | xargs -r docker stop
+                        docker ps -aq --filter "name=healthslot-" | xargs -r docker rm -f
                         
-                        # Remove volumes
-                        docker volume rm healthslot-pipeline2_mongodb_staging_data || true
+                        # Remove all volumes
+                        docker volume ls -q --filter "name=healthslot" | xargs -r docker volume rm
                         
-                        # Kill any process using the staging port (if running outside Docker)
-                        PORT=$(grep "^PORT=" .env.staging | cut -d '=' -f2)
-                        lsof -ti :$PORT | xargs kill -9 || true
+                        # Remove network if exists
+                        docker network rm healthslot-pipeline2_healthslot-network || true
                         
-                        # Wait for port to be available
-                        sleep 5
+                        # Wait for resources to be freed
+                        sleep 10
                         
                         # Start MongoDB first
                         docker-compose -f docker-compose.staging.yml up -d mongodb
@@ -150,12 +149,11 @@ pipeline {
                         docker ps
                         
                         # Check application health with retries
-                        PORT=$(grep "^PORT=" .env.staging | cut -d '=' -f2)
                         MAX_RETRIES=5
                         RETRY_COUNT=0
                         
                         while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-                            if wget -q --spider http://localhost:$PORT/api/health; then
+                            if wget -q --spider http://localhost:3005/api/health; then
                                 echo "Application is healthy"
                                 exit 0
                             fi
