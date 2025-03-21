@@ -80,7 +80,10 @@ pipeline {
                 script {
                     sh """
                         docker rm -f test-container || true
-                        docker run --name test-container -d -p 3001:3000 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        docker run --name test-container -d -p 3001:3000 \
+                            -e MONGODB_URI=mongodb://localhost:27017/healthslot-test \
+                            -e NODE_ENV=test \
+                            ${DOCKER_IMAGE}:${DOCKER_TAG}
                         sleep 5
                         docker ps -a
                         docker logs test-container
