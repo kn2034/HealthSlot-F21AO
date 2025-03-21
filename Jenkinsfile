@@ -8,8 +8,8 @@ pipeline {
     }
     
     environment {
-        DOCKER_IMAGE = 'kirananarayanak/healthslot-app'
-        DOCKER_TAG = "${BUILD_NUMBER}"
+        DOCKER_IMAGE = 'healthslot-app'
+        DOCKER_TAG = 'latest'
         JIRA_PROJECT = 'HEALTHSLOT'
         NODE_VERSION = '18'
     }
@@ -21,10 +21,10 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
-                script {
-                    // Clean workspace
-                    sh 'rm -rf node_modules package-lock.json'
+                nodejs(nodeJSInstallationName: 'NodeJS') {
+                    script {
+                        sh 'rm -rf node_modules package-lock.json'
+                    }
                 }
             }
         }
@@ -60,28 +60,33 @@ pipeline {
         
         stage('Install Dependencies') {
             steps {
-                script {
-                    sh 'rm -rf node_modules package-lock.json'
-                    sh 'npm install'
+                nodejs(nodeJSInstallationName: 'NodeJS') {
+                    script {
+                        sh 'rm -rf node_modules package-lock.json'
+                        sh 'npm install'
+                    }
                 }
             }
         }
         
         stage('Lint') {
             steps {
-                sh 'npm run lint'
+                nodejs(nodeJSInstallationName: 'NodeJS') {
+                    sh 'npm run lint'
+                }
             }
         }
         
         stage('Test') {
             steps {
-                script {
-                    try {
-                        sh 'npm test'
-                    } catch (err) {
-                        echo "Test execution failed: ${err.message}"
-                        currentBuild.result = 'FAILURE'
-                        error("Test execution failed")
+                nodejs(nodeJSInstallationName: 'NodeJS') {
+                    script {
+                        try {
+                            sh 'npm test'
+                        } catch (err) {
+                            echo "Test execution failed: ${err.message}"
+                            error 'Test execution failed'
+                        }
                     }
                 }
             }
@@ -90,11 +95,14 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    if (fileExists('Dockerfile')) {
-                        sh 'docker build -t healthslot-app .'
-                        sh 'trivy image healthslot-app || true'
-                    } else {
-                        error('Dockerfile not found')
+                    // Build the Docker image
+                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                    
+                    // Run Trivy scan if available
+                    try {
+                        sh "trivy image ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    } catch (err) {
+                        echo "Trivy scan skipped: ${err.message}"
                     }
                 }
             }
@@ -103,11 +111,17 @@ pipeline {
         stage('Deploy to Staging') {
             steps {
                 script {
-                    if (fileExists('docker-compose.staging.yml')) {
-                        sh 'docker-compose -f docker-compose.staging.yml up -d'
-                    } else {
-                        error('docker-compose.staging.yml not found')
+                    // Load environment variables from .env.staging
+                    def envFile = readFile('.env.staging').trim()
+                    envFile.split('\n').each { line ->
+                        def (key, value) = line.split('=')
+                        if (key && value) {
+                            env."${key}" = value
+                        }
                     }
+                    
+                    // Deploy using docker-compose
+                    sh 'docker-compose -f docker-compose.staging.yml --env-file .env.staging up -d'
                 }
             }
         }
@@ -115,10 +129,10 @@ pipeline {
     
     post {
         always {
-            node(null) {
+            node('built-in') {
                 script {
                     cleanWs()
-                    archiveArtifacts artifacts: 'coverage/**/*', allowEmptyArchive: true
+                    archiveArtifacts artifacts: '**/coverage/**/*', allowEmptyArchive: true
                 }
             }
         }
