@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const swaggerUi = require('swagger-ui-express');
+const winston = require('winston');
 const specs = require('./src/config/swagger');
 const connectDB = require('./src/config/db');
 const { metricsMiddleware, getMetrics } = require('./src/middleware/metrics.middleware');
@@ -12,6 +13,22 @@ const transferRoutes = require('./src/routes/transfer.routes');
 const testRegistrationRoutes = require('./src/routes/testRegistration.routes');
 const labTestRoutes = require('./src/routes/labTest.routes');
 const testResultRoutes = require('./src/routes/testResult.routes');
+
+// Create Winston logger
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' })
+  ]
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple()
+  }));
+}
 
 dotenv.config();
 
@@ -26,7 +43,7 @@ app.use(metricsMiddleware);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'healthy' });
+  res.status(200).json({ status: 'healthy' });
 });
 
 // Metrics endpoint
@@ -52,13 +69,13 @@ app.get('/', (req, res) => {
 
 // Error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.error('Unhandled error:', { error: err.stack });
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  logger.info(`Server running on port ${PORT}`);
 });
 
 // Don't start the server here
