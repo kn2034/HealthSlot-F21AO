@@ -3,10 +3,12 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../../app');
 const Patient = require('../models/Patient');
+const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
 let mongoServer;
 let authToken;
+let testUser;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -21,9 +23,19 @@ beforeAll(async () => {
     useUnifiedTopology: true
   });
 
-  // Generate a test token
+  // Create a test user
+  testUser = await User.create({
+    username: 'testdoctor',
+    fullName: 'Test Doctor',
+    email: 'test.doctor@example.com',
+    password: 'password123',
+    role: 'doctor',
+    department: 'General Medicine'
+  });
+
+  // Generate a test token with the actual user ID
   authToken = jwt.sign(
-    { id: 'test-user', role: 'doctor' },
+    { userId: testUser._id, role: testUser.role },
     process.env.JWT_SECRET || 'your-secret-key',
     { expiresIn: '1h' }
   );
@@ -40,6 +52,23 @@ beforeEach(async () => {
   for (const key in collections) {
     await collections[key].deleteMany();
   }
+  
+  // Recreate the test user
+  testUser = await User.create({
+    username: 'testdoctor',
+    fullName: 'Test Doctor',
+    email: 'test.doctor@example.com',
+    password: 'password123',
+    role: 'doctor',
+    department: 'General Medicine'
+  });
+  
+  // Regenerate the token with the new user ID
+  authToken = jwt.sign(
+    { userId: testUser._id, role: testUser.role },
+    process.env.JWT_SECRET || 'your-secret-key',
+    { expiresIn: '1h' }
+  );
 });
 
 describe('Patient Registration API Tests', () => {
