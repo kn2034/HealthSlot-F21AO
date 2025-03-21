@@ -31,6 +31,7 @@ const patientSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: true,
+    unique: true,
     trim: true,
   },
   address: {
@@ -44,6 +45,19 @@ const patientSchema = new mongoose.Schema({
     name: String,
     relationship: String,
     phone: String,
+  },
+  emergencyDetails: {
+    chiefComplaint: String,
+    severity: {
+      type: String,
+      enum: ['low', 'medium', 'high']
+    },
+    vitalSigns: {
+      bloodPressure: String,
+      heartRate: String,
+      temperature: String,
+      oxygenSaturation: String
+    }
   },
   bloodGroup: {
     type: String,
@@ -71,7 +85,7 @@ const patientSchema = new mongoose.Schema({
 });
 
 // Create index for better querying performance
-patientSchema.index({ patientId: 1, email: 1 });
+patientSchema.index({ patientId: 1, email: 1, phone: 1 });
 
 const Patient = mongoose.model('Patient', patientSchema);
 

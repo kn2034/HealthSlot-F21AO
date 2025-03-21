@@ -20,7 +20,9 @@ const validateAERegistration = (data) => {
     dateOfBirth: Joi.date().required(),
     gender: Joi.string().valid('male', 'female', 'other').required(),
     email: Joi.string().email().required(),
-    phone: Joi.string().required(),
+    phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
+      'string.pattern.base': 'Phone number must be exactly 10 digits'
+    }),
     address: Joi.object({
       street: Joi.string(),
       city: Joi.string(),
@@ -31,7 +33,9 @@ const validateAERegistration = (data) => {
     emergencyContact: Joi.object({
       name: Joi.string().required(),
       relationship: Joi.string().required(),
-      phone: Joi.string().required()
+      phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
+        'string.pattern.base': 'Emergency contact phone number must be exactly 10 digits'
+      })
     }),
     emergencyDetails: emergencyDetailsSchema
   });
@@ -46,7 +50,9 @@ const validateOPDRegistration = (data) => {
     dateOfBirth: Joi.date().required(),
     gender: Joi.string().valid('male', 'female', 'other').required(),
     email: Joi.string().email().required(),
-    phone: Joi.string().required(),
+    phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
+      'string.pattern.base': 'Phone number must be exactly 10 digits'
+    }),
     address: Joi.object({
       street: Joi.string(),
       city: Joi.string(),
@@ -57,7 +63,9 @@ const validateOPDRegistration = (data) => {
     emergencyContact: Joi.object({
       name: Joi.string().required(),
       relationship: Joi.string().required(),
-      phone: Joi.string().required()
+      phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
+        'string.pattern.base': 'Emergency contact phone number must be exactly 10 digits'
+      })
     })
   });
 
@@ -89,6 +97,13 @@ const registerAEPatient = async (req, res) => {
       data: patient
     });
   } catch (error) {
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        success: false,
+        message: `Patient with this ${field} already exists`
+      });
+    }
     res.status(500).json({
       success: false,
       message: 'Error registering A&E patient',
@@ -122,6 +137,13 @@ const registerOPDPatient = async (req, res) => {
       data: patient
     });
   } catch (error) {
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        success: false,
+        message: `Patient with this ${field} already exists`
+      });
+    }
     res.status(500).json({
       success: false,
       message: 'Error registering OPD patient',
