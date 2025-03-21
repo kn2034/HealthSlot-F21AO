@@ -1,14 +1,15 @@
 pipeline {
     // This Jenkinsfile is used for automated CI/CD of the HealthSlot project
     // Monitored branches: main (production), develop (staging), qa (testing)
-    agent {
-        docker {
-            image 'node:16'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
+    agent any
+    
+    tools {
+        // Define NodeJS installation - make sure this is configured in Jenkins
+        nodejs 'NodeJS'
     }
     
     environment {
+        DOCKER_PATH = sh(script: 'which docker || echo /opt/homebrew/bin/docker', returnStdout: true).trim()
         DOCKER_REGISTRY = 'registry.example.com'
         IMAGE_NAME = 'healthslot'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
@@ -60,17 +61,21 @@ pipeline {
                     def imageFullName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
                     def imageLatest = "${DOCKER_REGISTRY}/${IMAGE_NAME}:latest"
                     
-                    // Build the Docker image
-                    sh "docker build -t ${imageFullName} -t ${imageLatest} ."
+                    // Check if Docker is available
+                    sh "[ -f ${DOCKER_PATH} ] || echo 'Docker not found at ${DOCKER_PATH}'"
+                    
+                    // Build the Docker image using the full path
+                    sh "${DOCKER_PATH} info"
+                    sh "${DOCKER_PATH} build -t ${imageFullName} -t ${imageLatest} ."
                     
                     // Login to Docker registry
                     withCredentials([string(credentialsId: 'docker-registry-token', variable: 'DOCKER_TOKEN')]) {
-                        sh "echo ${DOCKER_TOKEN} | docker login ${DOCKER_REGISTRY} -u jenkins --password-stdin"
+                        sh "echo ${DOCKER_TOKEN} | ${DOCKER_PATH} login ${DOCKER_REGISTRY} -u jenkins --password-stdin"
                     }
                     
                     // Push the Docker image
-                    sh "docker push ${imageFullName}"
-                    sh "docker push ${imageLatest}"
+                    sh "${DOCKER_PATH} push ${imageFullName}"
+                    sh "${DOCKER_PATH} push ${imageLatest}"
                 }
             }
         }
@@ -132,8 +137,10 @@ pipeline {
             // Clean workspace
             cleanWs()
             
-            // Clean Docker images
-            sh 'docker system prune -f'
+            // Clean Docker images with full path
+            catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+                sh "${DOCKER_PATH} system prune -f"
+            }
         }
         success {
             echo 'Pipeline completed successfully!'
