@@ -1,12 +1,14 @@
+version: '3.8'
+
 services:
   app:
     image: ${DOCKER_IMAGE}:${DOCKER_TAG}
-    container_name: healthslot-staging
+    container_name: healthslot-qa
     user: root
     ports:
-      - "3005:8081"
+      - "8081:8081"
     environment:
-      - NODE_ENV=staging
+      - NODE_ENV=qa
       - PORT=8081
       - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
@@ -26,15 +28,15 @@ services:
 
   mongodb:
     image: mongo:latest
-    container_name: healthslot-mongodb-staging
+    container_name: healthslot-mongodb-qa
     restart: "no"
     ports:
-      - "27019:27017"
+      - "27018:27017"
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
     volumes:
-      - mongodb_staging_data:/data/db
+      - mongodb_qa_data:/data/db
     networks:
       - healthslot-network
     healthcheck:
@@ -46,8 +48,8 @@ services:
 networks:
   healthslot-network:
     driver: bridge
-    name: healthslot-network-staging
+    name: healthslot-network-qa
 
 volumes:
-  mongodb_staging_data:
-    name: mongodb_staging_data 
+  mongodb_qa_data:
+    name: mongodb_qa_data 
