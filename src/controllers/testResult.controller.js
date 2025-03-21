@@ -1,6 +1,4 @@
 const TestResult = require('../models/TestResult');
-const TestRegistration = require('../models/TestRegistration');
-const Patient = require('../models/Patient');
 const { createAuditLog } = require('../utils/auditLog');
 
 const getTestResults = async (req, res) => {

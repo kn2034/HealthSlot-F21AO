@@ -68,7 +68,7 @@ app.get('/', (req, res) => {
 });
 
 // Error handling
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   logger.error('Unhandled error:', { error: err.stack });
   res.status(500).json({ error: 'Something went wrong!' });
 });
