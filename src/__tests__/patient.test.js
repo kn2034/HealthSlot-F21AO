@@ -205,11 +205,17 @@ describe('Patient Registration API Tests', () => {
       expect(firstResponse.status).toBe(201);
       expect(firstResponse.body.success).toBe(true);
 
-      // Attempt duplicate registration
+      // Attempt duplicate registration with different patientId but same phone
+      const duplicatePatient = {
+        ...patient,
+        patientId: 'P004', // Different patientId
+        email: 'different.email@email.com' // Different email to avoid email uniqueness conflict
+      };
+
       const duplicateResponse = await request(app)
         .post('/api/patients/register-opd')
         .set('Authorization', `Bearer ${authToken}`)
-        .send(patient);
+        .send(duplicatePatient);
 
       expect(duplicateResponse.status).toBe(400);
       expect(duplicateResponse.body.success).toBe(false);
