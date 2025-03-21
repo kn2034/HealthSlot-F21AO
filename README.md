@@ -97,6 +97,16 @@ The CI/CD pipeline includes the following stages:
 6. **Deploy to Staging**: Automated deployment to staging
 7. **Deploy to Production**: Manual approval followed by deployment
 
+### Branch-Specific Behavior
+
+The pipeline is configured to handle different branches in specific ways:
+
+- **qa branch**: Triggers full pipeline up to staging deployment (for testing)
+- **develop branch**: Triggers full pipeline up to staging deployment (for integration)
+- **main branch**: Triggers full pipeline including production deployment (with manual approval)
+
+Changes pushed to these branches will automatically trigger the Jenkins pipeline, which will execute the appropriate stages based on the branch.
+
 For detailed setup instructions, see the [jenkins-setup.md](jenkins-setup.md) file.
 
 ### Security Features
