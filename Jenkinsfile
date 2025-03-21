@@ -75,7 +75,10 @@ pipeline {
         
         stage('Deploy to Staging') {
             when {
-                branch 'develop'
+                anyOf {
+                    branch 'develop'
+                    branch 'qa'
+                }
             }
             steps {
                 script {
