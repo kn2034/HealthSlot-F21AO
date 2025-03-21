@@ -16,4 +16,4 @@ This file is created to test the Jenkins CI/CD pipeline integration with the qa 
 4. QA
 5. Build Docker Image
 6. Deploy to Staging (for qa and develop branches)
-7. Deploy to Production (for main branch only, with manual approval) 
+7. Deploy to Production (for main branch only, with manual approval) # Test update
