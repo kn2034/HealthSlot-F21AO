@@ -12,6 +12,7 @@ pipeline {
         DOCKER_TAG = "${BUILD_NUMBER}"
         JIRA_PROJECT = 'HEALTHSLOT'
         NODE_VERSION = '18'
+        SNYK_TOKEN = credentials('snyk-token')
     }
     
     tools {
@@ -33,6 +34,18 @@ pipeline {
             }
         }
         
+        stage('Security Scan') {
+            steps {
+                script {
+                    // Install and run Snyk for dependency vulnerability scanning
+                    sh 'npm install -g snyk'
+                    sh 'snyk auth ${SNYK_TOKEN}'
+                    sh 'snyk test || true'
+                    sh 'snyk container test ${DOCKER_IMAGE}:${DOCKER_TAG} || true'
+                }
+            }
+        }
+        
         stage('Install Dependencies') {
             steps {
                 sh 'npm ci'
@@ -46,28 +59,52 @@ pipeline {
         }
         
         stage('Test') {
-            steps {
-                sh 'npm test'
-                // Archive test results
-                archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
+            parallel {
+                stage('Unit Tests') {
+                    steps {
+                        sh 'npm test'
+                        junit 'coverage/junit.xml'
+                        publishHTML([
+                            allowMissing: false,
+                            alwaysLinkToLastBuild: true,
+                            keepAll: true,
+                            reportDir: 'coverage/lcov-report',
+                            reportFiles: 'index.html',
+                            reportName: 'Coverage Report'
+                        ])
+                    }
+                }
+                stage('UI Tests') {
+                    steps {
+                        sh 'npm run test:ui'
+                    }
+                }
+                stage('Integration Tests') {
+                    steps {
+                        sh 'npm run test:integration'
+                    }
+                }
             }
         }
         
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Verify Dockerfile exists
                     if (!fileExists('Dockerfile')) {
                         error 'Dockerfile not found in workspace'
                     }
                     
-                    // Build Docker image
                     sh """
                         docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
                         docker build -t ${DOCKER_IMAGE}:latest .
                     """
                     
-                    // Push to Docker Hub
+                    // Run Trivy container security scan
+                    sh """
+                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy image ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    """
+                    
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
                                                    usernameVariable: 'DOCKER_USERNAME', 
                                                    passwordVariable: 'DOCKER_PASSWORD')]) {
@@ -93,6 +130,13 @@ pipeline {
                         sleep 5
                         docker ps -a
                         docker logs test-container
+                        
+                        # Health check
+                        curl -f http://localhost:3001/health || exit 1
+                        
+                        # Performance test using Apache Benchmark
+                        ab -n 100 -c 10 http://localhost:3001/health
+                        
                         docker stop test-container || true
                         docker rm test-container || true
                     """
@@ -106,15 +150,22 @@ pipeline {
             }
             steps {
                 script {
-                    // Verify docker-compose file exists
                     if (!fileExists('docker-compose.staging.yml')) {
                         error 'docker-compose.staging.yml not found in workspace'
                     }
                     
-                    // Deploy to staging environment
                     sh """
                         docker-compose -f docker-compose.staging.yml pull
                         docker-compose -f docker-compose.staging.yml up -d
+                        
+                        # Setup monitoring
+                        docker run -d --name prometheus \
+                            -v ./prometheus.yml:/etc/prometheus/prometheus.yml \
+                            prom/prometheus
+                            
+                        docker run -d --name grafana \
+                            -p 3000:3000 \
+                            grafana/grafana
                     """
                 }
             }
@@ -179,8 +230,9 @@ pipeline {
     
     post {
         always {
-            // Clean up workspace
             cleanWs()
+            // Archive logs
+            archiveArtifacts artifacts: 'logs/**/*.log', allowEmptyArchive: true
         }
         success {
             script {
