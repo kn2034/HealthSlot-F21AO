@@ -76,21 +76,18 @@ describe('Patient Registration API Tests', () => {
   describe('POST /api/patients/register-opd', () => {
     it('should successfully register an OPD patient', async () => {
       const validPatient = {
-        personalInfo: {
-          firstName: 'Test',
-          lastName: 'Patient',
-          dateOfBirth: '1990-01-01',
-          gender: 'Male',
-          bloodGroup: 'O+'
-        },
-        contactInfo: {
-          email: 'test.patient@email.com',
-          phone: '9876543210',
-          address: {
-            city: 'Mumbai',
-            state: 'Maharashtra',
-            pincode: '400001'
-          }
+        patientId: 'P001',
+        fullName: 'Test Patient',
+        dateOfBirth: '1990-01-01',
+        gender: 'male',
+        email: 'test.patient@email.com',
+        phone: '9876543210',
+        address: {
+          street: '123 Test St',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          zipCode: '400001',
+          country: 'India'
         },
         emergencyContact: {
           name: 'Emergency Contact',
@@ -107,15 +104,14 @@ describe('Patient Registration API Tests', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveProperty('patientId');
-      expect(response.body.data.registrationType).toBe('OPD');
+      expect(response.body.data.status).toBe('active');
     });
 
     it('should fail when required fields are missing', async () => {
       const invalidPatient = {
-        personalInfo: {
-          firstName: 'Test'
-          // Missing required fields
-        }
+        patientId: 'P001',
+        fullName: 'Test Patient'
+        // Missing required fields
       };
 
       const response = await request(app)
@@ -125,7 +121,7 @@ describe('Patient Registration API Tests', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('Validation Error');
+      expect(response.body.message).toBe('Validation error');
     });
   });
 
@@ -133,19 +129,18 @@ describe('Patient Registration API Tests', () => {
   describe('POST /api/patients/register-ae', () => {
     it('should successfully register an A&E patient', async () => {
       const validPatient = {
-        personalInfo: {
-          firstName: 'Emergency',
-          lastName: 'Patient',
-          dateOfBirth: '1985-05-15',
-          gender: 'Female',
-          bloodGroup: 'B+'
-        },
-        contactInfo: {
-          phone: '9876543212',
-          address: {
-            city: 'Mumbai',
-            state: 'Maharashtra'
-          }
+        patientId: 'P002',
+        fullName: 'Emergency Patient',
+        dateOfBirth: '1985-05-15',
+        gender: 'female',
+        email: 'emergency.patient@email.com',
+        phone: '9876543212',
+        address: {
+          street: '456 Emergency St',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          zipCode: '400002',
+          country: 'India'
         },
         emergencyContact: {
           name: 'Emergency Contact',
@@ -153,14 +148,13 @@ describe('Patient Registration API Tests', () => {
           phone: '9876543213'
         },
         emergencyDetails: {
-          injuryType: 'Head Trauma',
-          arrivalMode: 'Ambulance',
           chiefComplaint: 'Severe head injury from accident',
+          severity: 'high',
           vitalSigns: {
             bloodPressure: '140/90',
-            pulseRate: 95,
-            temperature: 37.5,
-            oxygenSaturation: 94
+            heartRate: '95',
+            temperature: '37.5',
+            oxygenSaturation: '94'
           }
         }
       };
@@ -173,8 +167,8 @@ describe('Patient Registration API Tests', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveProperty('patientId');
-      expect(response.body.data.registrationType).toBe('A&E');
-      expect(response.body.data).toHaveProperty('severity');
+      expect(response.body.data.status).toBe('active');
+      expect(response.body.data.emergencyDetails).toHaveProperty('severity');
     });
   });
 
@@ -182,21 +176,18 @@ describe('Patient Registration API Tests', () => {
   describe('Duplicate Patient Prevention', () => {
     it('should prevent duplicate patient registration with same phone number', async () => {
       const patient = {
-        personalInfo: {
-          firstName: 'Test',
-          lastName: 'Patient',
-          dateOfBirth: '1990-01-01',
-          gender: 'Male',
-          bloodGroup: 'O+'
-        },
-        contactInfo: {
-          email: 'test.patient@email.com',
-          phone: '9876543210',
-          address: {
-            city: 'Mumbai',
-            state: 'Maharashtra',
-            pincode: '400001'
-          }
+        patientId: 'P003',
+        fullName: 'Test Patient',
+        dateOfBirth: '1990-01-01',
+        gender: 'male',
+        email: 'test.patient@email.com',
+        phone: '9876543210',
+        address: {
+          street: '123 Test St',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          zipCode: '400001',
+          country: 'India'
         },
         emergencyContact: {
           name: 'Emergency Contact',
@@ -230,20 +221,18 @@ describe('Patient Registration API Tests', () => {
   describe('Input Validation', () => {
     it('should validate phone number format', async () => {
       const patient = {
-        personalInfo: {
-          firstName: 'Test',
-          lastName: 'Patient',
-          dateOfBirth: '1990-01-01',
-          gender: 'Male',
-          bloodGroup: 'O+'
-        },
-        contactInfo: {
-          email: 'test.patient@email.com',
-          phone: '123', // Invalid phone number
-          address: {
-            city: 'Mumbai',
-            state: 'Maharashtra'
-          }
+        patientId: 'P004',
+        fullName: 'Test Patient',
+        dateOfBirth: '1990-01-01',
+        gender: 'male',
+        email: 'test.patient@email.com',
+        phone: '123', // Invalid phone number
+        address: {
+          street: '123 Test St',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          zipCode: '400001',
+          country: 'India'
         },
         emergencyContact: {
           name: 'Emergency Contact',
@@ -259,25 +248,23 @@ describe('Patient Registration API Tests', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('Validation Error');
+      expect(response.body.message).toBe('Validation error');
     });
 
     it('should validate email format', async () => {
       const patient = {
-        personalInfo: {
-          firstName: 'Test',
-          lastName: 'Patient',
-          dateOfBirth: '1990-01-01',
-          gender: 'Male',
-          bloodGroup: 'O+'
-        },
-        contactInfo: {
-          email: 'invalid-email', // Invalid email
-          phone: '9876543210',
-          address: {
-            city: 'Mumbai',
-            state: 'Maharashtra'
-          }
+        patientId: 'P005',
+        fullName: 'Test Patient',
+        dateOfBirth: '1990-01-01',
+        gender: 'male',
+        email: 'invalid-email', // Invalid email
+        phone: '9876543210',
+        address: {
+          street: '123 Test St',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          zipCode: '400001',
+          country: 'India'
         },
         emergencyContact: {
           name: 'Emergency Contact',
@@ -293,7 +280,7 @@ describe('Patient Registration API Tests', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('Validation Error');
+      expect(response.body.message).toBe('Validation error');
     });
   });
 }); 
