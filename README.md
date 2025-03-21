@@ -128,6 +128,59 @@ The API includes the following main endpoints:
 
 For detailed API documentation, access the Swagger UI at http://localhost:3001/api-docs when the application is running.
 
+## Docker & Jenkins Setup
+
+### Docker Setup
+
+This project uses Docker for containerization. The application is containerized using a multi-stage build process for optimal image size and security.
+
+#### Docker Components:
+- **Dockerfile**: Multi-stage build that creates a production-ready image
+- **docker-compose.production.yml**: Docker Compose configuration for production environment
+- **docker-compose.staging.yml**: Docker Compose configuration for staging environment
+
+### Jenkins Setup (Docker-only)
+
+Follow these steps to set up Jenkins with Docker focus:
+
+1. **Install Jenkins**
+   - Follow installation instructions for your OS from [Jenkins.io](https://www.jenkins.io/doc/book/installing/)
+   - Make sure Docker is installed on the Jenkins server
+
+2. **Configure Jenkins**
+   - Install Docker plugin in Jenkins (Manage Jenkins → Plugins → Available → "Docker")
+   - Install Docker Pipeline plugin (Manage Jenkins → Plugins → Available → "Docker Pipeline")
+
+3. **Create Jenkins Pipeline Job**
+   - Create a new Pipeline job in Jenkins (New Item → Pipeline)
+   - Configure SCM to point to your Git repository
+   - Set the branch specifier to the branch you want to monitor (e.g., */qa)
+   - Set the script path to "Jenkinsfile"
+
+4. **Run the Pipeline**
+   - The pipeline will:
+     - Build the Docker image
+     - Run a test container
+     - Clean up resources when done
+
+### Manual Docker Commands
+
+You can also run Docker commands manually:
+
+```bash
+# Build the Docker image
+docker build -t healthslot:latest .
+
+# Run the container
+docker run -d -p 3000:3000 --name healthslot-app healthslot:latest
+
+# Check container logs
+docker logs healthslot-app
+
+# Stop the container
+docker stop healthslot-app
+```
+
 ## License
 
 [Include your license information here]
