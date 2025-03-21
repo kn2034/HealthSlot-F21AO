@@ -1,45 +1,40 @@
 const mongoose = require('mongoose');
 
 const labTestSchema = new mongoose.Schema({
-    test_name: {
+    name: {
         type: String,
         required: true,
         trim: true
     },
-    test_type: {
+    description: {
         type: String,
         required: true,
-        enum: ["Blood Test", "MRI", "X-Ray", "CT-Scan", "ECG", "Ultrasound"]
     },
-    test_status: {
+    category: {
         type: String,
-        enum: ["Pending", "Completed", "In Progress"],
-        default: "Pending"
+        required: true,
+        enum: ['blood', 'urine', 'imaging', 'other'],
     },
-    patient_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Patient",
-        required: true
+    price: {
+        type: Number,
+        required: true,
+        min: 0,
     },
-    result_value: {
+    turnaroundTime: {
         type: String,
-        default: null
+        required: true,
     },
-    unit: {
-        type: String,
-        default: null
+    isActive: {
+        type: Boolean,
+        default: true,
     },
-    created_at: {
-        type: Date,
-        default: Date.now
-    },
-    updated_at: {
-        type: Date,
-        default: Date.now
-    }
+}, {
+    timestamps: true,
 });
 
 // Create index for better querying performance
-labTestSchema.index({ test_name: 1, test_type: 1, patient_id: 1 });
+labTestSchema.index({ name: 1, category: 1 });
 
-module.exports = mongoose.model("LabTest", labTestSchema);
+const LabTest = mongoose.model('LabTest', labTestSchema);
+
+module.exports = LabTest;

@@ -181,10 +181,69 @@ docker logs healthslot-app
 docker stop healthslot-app
 ```
 
+## Quick Start with Docker
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd HealthSlot-F21AO
+```
+
+2. Create `.env` file:
+```env
+PORT=3000
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+```
+
+3. Start the application:
+```bash
+docker compose up -d
+```
+
+4. Access the application:
+- API: http://localhost:3000
+- API Documentation: http://localhost:3000/api-docs
+
+## Docker Setup
+
+For detailed Docker setup instructions, see [DOCKER.md](DOCKER.md)
+
+### Quick Commands
+
+```bash
+# Start services
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop services
+docker compose down
+
+# Rebuild after changes
+docker compose up -d --build
+```
+
+### Docker Image
+
+The application image is available on Docker Hub:
+```bash
+docker pull kirananarayanak/healthslot-app:latest
+```
+
+For more information about:
+- Detailed setup instructions
+- Environment configuration
+- Troubleshooting
+- Development workflow
+
+Please refer to [DOCKER.md](DOCKER.md)
+
 ## License
 
 [Include your license information here]
 
 ## Contributors
 
-[Include contributors here]
+[Include contributors here]# Test

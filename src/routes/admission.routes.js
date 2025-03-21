@@ -66,4 +66,9 @@ router.get('/status/:admissionId', protect, getAdmissionStatus);
 
 router.put('/discharge', protect, authorize('admin', 'doctor'), dischargePatient);
 
+// Placeholder routes
+router.get('/', (req, res) => {
+  res.json({ message: 'Admission routes working' });
+});
+
 module.exports = router; 

@@ -1,15 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/auth.controller');
-const { validateRegistration, validateLogin } = require('../middleware/validation.middleware'); 
+const { register, login, logout } = require('../controllers/auth.controller');
 
-// Auth Routes
-router.post('/register', validateRegistration, authController.register);
-router.post('/login', validateLogin, authController.login);
-router.post('/logout', authController.logout);
+// Auth routes
+router.post('/register', register);
+router.post('/login', login);
+router.post('/logout', logout);
 
 module.exports = router;
-const { register, login, logout } = require('../controllers/auth.controller');
 
 /**
  * @swagger
@@ -160,10 +158,4 @@ const { register, login, logout } = require('../controllers/auth.controller');
  *         description: Unauthorized - Invalid or missing token
  *       500:
  *         description: Server error
- */
-
-router.post('/register', register);
-router.post('/login', login);
-router.post('/logout', logout);
-
-module.exports = router; 
+ */ 

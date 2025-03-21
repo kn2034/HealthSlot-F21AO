@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  app:
+    image: kirananarayanak/healthslot-app:latest
+    container_name: healthslot-app-prod
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongodb:27017/healthslot-prod
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      - mongodb
+    networks:
+      - healthslot-network
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+
+  mongodb:
+    image: mongo:latest
+    container_name: healthslot-mongodb-prod
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongodb_prod_data:/data/db
+    networks:
+      - healthslot-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+networks:
+  healthslot-network:
+    driver: bridge
+
+volumes:
+  mongodb_prod_data:

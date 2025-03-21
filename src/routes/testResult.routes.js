@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const testResultController = require('../controllers/testResult.controller');
+const { addTestResult, getTestResults, getTestResultById } = require('../controllers/testResult.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
 
 /**
@@ -45,13 +45,23 @@ const { protect, authorize } = require('../middleware/auth.middleware');
 router.get('/test-results/:patientId', 
   protect, 
   authorize('admin', 'doctor', 'lab_technician'), 
-  testResultController.getTestResults
+  getTestResults
 );
 
 router.post('/test-results', 
   protect, 
   authorize('admin', 'doctor', 'lab_technician'), 
-  testResultController.addTestResult
+  addTestResult
 );
+
+// Test result routes
+router.get('/', protect, authorize('admin', 'doctor', 'lab_technician'), getTestResults);
+router.get('/:id', protect, authorize('admin', 'doctor', 'lab_technician'), getTestResultById);
+router.post('/', protect, authorize('admin', 'lab_technician'), addTestResult);
+
+// Placeholder routes
+router.get('/', (req, res) => {
+  res.json({ message: 'Test result routes working' });
+});
 
 module.exports = router; 

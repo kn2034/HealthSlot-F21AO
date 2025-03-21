@@ -1,79 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const { 
-    registerOPDPatient, 
-    registerAEPatient
+const { protect, authorize } = require('../middleware/auth.middleware');
+const {
+  registerAEPatient,
+  registerOPDPatient,
+  getPatientById,
+  updatePatient,
+  getAllPatients
 } = require('../controllers/patientController');
 
-/**
- * @swagger
- * /api/patients/register-opd:
- *   post:
- *     tags:
- *       - Patients
- *     summary: Register a new OPD patient
- *     description: Register a new patient for Outpatient Department
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - personalInfo
- *               - contactInfo
- *             properties:
- *               personalInfo:
- *                 $ref: '#/components/schemas/PersonalInfo'
- *               contactInfo:
- *                 $ref: '#/components/schemas/ContactInfo'
- *               emergencyContact:
- *                 $ref: '#/components/schemas/EmergencyContact'
- *     responses:
- *       201:
- *         description: Patient registered successfully
- *       400:
- *         description: Invalid input data
- *       500:
- *         description: Server error
- */
-router.post('/register-opd', registerOPDPatient);
+// A&E Registration
+router.post('/register-ae', protect, authorize('doctor', 'nurse'), registerAEPatient);
 
-/**
- * @swagger
- * /api/patients/register-ae:
- *   post:
- *     tags:
- *       - Patients
- *     summary: Register a new A&E patient
- *     description: Register a new patient for Accident & Emergency
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - personalInfo
- *               - contactInfo
- *               - emergencyDetails
- *             properties:
- *               personalInfo:
- *                 $ref: '#/components/schemas/PersonalInfo'
- *               contactInfo:
- *                 $ref: '#/components/schemas/ContactInfo'
- *               emergencyContact:
- *                 $ref: '#/components/schemas/EmergencyContact'
- *               emergencyDetails:
- *                 $ref: '#/components/schemas/EmergencyDetails'
- *     responses:
- *       201:
- *         description: Patient registered successfully
- *       400:
- *         description: Invalid input data
- *       500:
- *         description: Server error
- */
-router.post('/register-ae', registerAEPatient);
+// OPD Registration
+router.post('/register-opd', protect, authorize('doctor', 'nurse'), registerOPDPatient);
+
+// Get all patients
+router.get('/', protect, authorize('doctor', 'nurse', 'admin'), getAllPatients);
+
+// Get patient by ID
+router.get('/:id', protect, authorize('doctor', 'nurse', 'admin'), getPatientById);
+
+// Update patient
+router.put('/:id', protect, authorize('doctor', 'nurse', 'admin'), updatePatient);
 
 module.exports = router; 
