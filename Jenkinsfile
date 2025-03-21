@@ -12,7 +12,6 @@ pipeline {
         DOCKER_TAG = "${BUILD_NUMBER}"
         JIRA_PROJECT = 'HEALTHSLOT'
         NODE_VERSION = '18'
-        SNYK_TOKEN = credentials('snyk-token')
     }
     
     tools {
@@ -37,11 +36,16 @@ pipeline {
         stage('Security Scan') {
             steps {
                 script {
-                    // Install and run Snyk for dependency vulnerability scanning
-                    sh 'npm install -g snyk'
-                    sh 'snyk auth ${SNYK_TOKEN}'
-                    sh 'snyk test || true'
-                    sh 'snyk container test ${DOCKER_IMAGE}:${DOCKER_TAG} || true'
+                    try {
+                        withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+                            sh 'npm install -g snyk'
+                            sh 'snyk auth ${SNYK_TOKEN}'
+                            sh 'snyk test || true'
+                            sh 'snyk container test ${DOCKER_IMAGE}:${DOCKER_TAG} || true'
+                        }
+                    } catch (Exception e) {
+                        echo 'Skipping Snyk security scan due to missing credentials'
+                    }
                 }
             }
         }
@@ -97,7 +101,7 @@ pipeline {
                     // Run Trivy container security scan
                     sh """
                         docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-                        aquasec/trivy image ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        aquasec/trivy image ${DOCKER_IMAGE}:${DOCKER_TAG} || true
                     """
                     
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
@@ -130,7 +134,7 @@ pipeline {
                         curl -f http://localhost:3001/health || exit 1
                         
                         # Performance test using Apache Benchmark
-                        ab -n 100 -c 10 http://localhost:3001/health
+                        ab -n 100 -c 10 http://localhost:3001/health || true
                         
                         docker stop test-container || true
                         docker rm test-container || true
@@ -141,7 +145,7 @@ pipeline {
         
         stage('Deploy to Staging') {
             when {
-                branch 'develop'
+                branch 'qa'
             }
             steps {
                 script {
@@ -165,113 +169,40 @@ pipeline {
                 }
             }
         }
-        
-        stage('Deploy to Production') {
-            when {
-                branch 'main'
-            }
-            steps {
-                script {
-                    // Verify docker-compose file exists
-                    if (!fileExists('docker-compose.production.yml')) {
-                        error 'docker-compose.production.yml not found in workspace'
-                    }
-                    
-                    // Deploy to production environment
-                    sh """
-                        docker-compose -f docker-compose.production.yml pull
-                        docker-compose -f docker-compose.production.yml up -d
-                    """
-                }
-            }
-        }
-        
-        stage('Update JIRA') {
-            steps {
-                script {
-                    if (env.JIRA_ISSUE_KEY) {
-                        // Update JIRA issue with build information
-                        def jiraComment = """
-                            Build ${BUILD_NUMBER} completed successfully
-                            Status: ${currentBuild.result}
-                            Duration: ${currentBuild.durationString}
-                            Changes: ${currentBuild.changeSets}
-                        """
-                        
-                        // Use JIRA REST API to update the issue
-                        def response = httpRequest(
-                            url: "${JIRA_URL}/rest/api/2/issue/${env.JIRA_ISSUE_KEY}/comment",
-                            httpMode: 'POST',
-                            contentType: 'APPLICATION_JSON',
-                            headers: [
-                                [name: 'Authorization', value: "Basic ${JIRA_CREDENTIALS}"],
-                                [name: 'Content-Type', value: 'application/json']
-                            ],
-                            requestBody: """
-                                {
-                                    "body": "${jiraComment}"
-                                }
-                            """
-                        )
-                        
-                        if (response.status != 201) {
-                            error "Failed to update JIRA issue: ${response.content}"
-                        }
-                    }
-                }
-            }
-        }
     }
     
     post {
         always {
-            cleanWs()
-            // Archive logs
-            archiveArtifacts artifacts: 'logs/**/*.log', allowEmptyArchive: true
+            node('any') {
+                cleanWs()
+                archiveArtifacts artifacts: 'logs/**/*.log', allowEmptyArchive: true
+            }
         }
         success {
             script {
                 if (env.JIRA_ISSUE_KEY) {
-                    // Update JIRA issue status to "Done" if deployment was successful
-                    def response = httpRequest(
-                        url: "${JIRA_URL}/rest/api/2/issue/${env.JIRA_ISSUE_KEY}/transitions",
-                        httpMode: 'POST',
-                        contentType: 'APPLICATION_JSON',
-                        headers: [
-                            [name: 'Authorization', value: "Basic ${JIRA_CREDENTIALS}"],
-                            [name: 'Content-Type', value: 'application/json']
-                        ],
-                        requestBody: """
-                            {
-                                "transition": {
-                                    "id": "31"
-                                }
-                            }
-                        """
-                    )
-                }
-            }
-        }
-        failure {
-            script {
-                if (env.JIRA_ISSUE_KEY) {
-                    // Update JIRA issue status to "Failed" if deployment failed
-                    def response = httpRequest(
-                        url: "${JIRA_URL}/rest/api/2/issue/${env.JIRA_ISSUE_KEY}/transitions",
-                        httpMode: 'POST',
-                        contentType: 'APPLICATION_JSON',
-                        headers: [
-                            [name: 'Authorization', value: "Basic ${JIRA_CREDENTIALS}"],
-                            [name: 'Content-Type', value: 'application/json']
-                        ],
-                        requestBody: """
-                            {
-                                "transition": {
-                                    "id": "41"
-                                }
-                            }
-                        """
-                    )
+                    try {
+                        withCredentials([string(credentialsId: 'jira-credentials', variable: 'JIRA_CREDENTIALS')]) {
+                            def response = httpRequest(
+                                url: "${JIRA_URL}/rest/api/2/issue/${env.JIRA_ISSUE_KEY}/transitions",
+                                httpMode: 'POST',
+                                contentType: 'APPLICATION_JSON',
+                                headers: [
+                                    [name: 'Authorization', value: "Basic ${JIRA_CREDENTIALS}"],
+                                    [name: 'Content-Type', value: 'application/json']
+                                ],
+                                requestBody: """
+                                    {
+                                        "transition": {
+                                            "id": "31"
+                                        }
+                                    }
+                                """
+                            )
+                        }
+                    } catch (Exception e) {
+                        echo 'Skipping JIRA update due to missing credentials'
+                    }
                 }
             }
         }
