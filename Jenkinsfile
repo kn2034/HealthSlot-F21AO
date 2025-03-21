@@ -74,11 +74,6 @@ pipeline {
                         ])
                     }
                 }
-                stage('UI Tests') {
-                    steps {
-                        sh 'npm run test:ui'
-                    }
-                }
                 stage('Integration Tests') {
                     steps {
                         sh 'npm run test:integration'

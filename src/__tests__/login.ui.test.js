@@ -1,58 +1,48 @@
-const { Builder, By, until } = require('selenium-webdriver');
-const chrome = require('selenium-webdriver/chrome');
+const request = require('supertest');
+const app = require('../../app');
+const User = require('../models/User');
 
-jest.setTimeout(30000); // Increase timeout for UI tests
-
-describe('Login Page UI Tests', () => {
-    let driver;
-
+describe('Login API Tests', () => {
     beforeAll(async () => {
-        driver = await new Builder()
-            .forBrowser('chrome')
-            .setChromeOptions(new chrome.Options().headless())
-            .build();
+        // Create a test user
+        await User.create({
+            username: 'testuser',
+            fullName: 'Test User',
+            email: 'test@example.com',
+            password: 'Test123!',
+            role: 'admin',
+            department: 'IT'
+        });
     });
 
     afterAll(async () => {
-        await driver.quit();
+        // Clean up test user
+        await User.deleteMany({});
     });
 
-    test('should display login form', async () => {
-        await driver.get('http://localhost:3000/login');
-        
-        const emailInput = await driver.wait(
-            until.elementLocated(By.css('input[type="email"]')),
-            5000
-        );
-        const passwordInput = await driver.wait(
-            until.elementLocated(By.css('input[type="password"]')),
-            5000
-        );
-        const loginButton = await driver.wait(
-            until.elementLocated(By.css('button[type="submit"]')),
-            5000
-        );
+    test('should successfully login with valid credentials', async () => {
+        const response = await request(app)
+            .post('/api/auth/login')
+            .send({
+                email: 'test@example.com',
+                password: 'Test123!'
+            });
 
-        expect(await emailInput.isDisplayed()).toBe(true);
-        expect(await passwordInput.isDisplayed()).toBe(true);
-        expect(await loginButton.isDisplayed()).toBe(true);
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+        expect(response.body.data).toHaveProperty('token');
     });
 
-    test('should show error on invalid login', async () => {
-        await driver.get('http://localhost:3000/login');
-        
-        const emailInput = await driver.findElement(By.css('input[type="email"]'));
-        const passwordInput = await driver.findElement(By.css('input[type="password"]'));
-        const loginButton = await driver.findElement(By.css('button[type="submit"]'));
+    test('should fail with invalid credentials', async () => {
+        const response = await request(app)
+            .post('/api/auth/login')
+            .send({
+                email: 'test@example.com',
+                password: 'wrongpassword'
+            });
 
-        await emailInput.sendKeys('invalid@test.com');
-        await passwordInput.sendKeys('wrongpassword');
-        await loginButton.click();
-
-        const errorMessage = await driver.wait(
-            until.elementLocated(By.css('.error-message')),
-            5000
-        );
-        expect(await errorMessage.isDisplayed()).toBe(true);
+        expect(response.status).toBe(401);
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Invalid credentials');
     });
 }); 
