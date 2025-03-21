@@ -79,6 +79,7 @@ pipeline {
             steps {
                 script {
                     sh """
+                        docker rm -f test-container || true
                         docker run --name test-container -d -p 3001:3000 ${DOCKER_IMAGE}:${DOCKER_TAG}
                         sleep 5
                         docker ps -a
