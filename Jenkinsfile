@@ -129,40 +129,22 @@ pipeline {
                         # Remove volumes
                         docker volume rm healthslot-pipeline2_mongodb_staging_data || true
                         
-                        # Kill any process using the staging port
+                        # Kill any process using the staging port (if running outside Docker)
                         PORT=$(grep "^PORT=" .env.staging | cut -d '=' -f2)
                         lsof -ti :$PORT | xargs kill -9 || true
                         
                         # Wait for port to be available
                         sleep 5
-                    '''
-                    
-                    // Deploy using docker-compose with health check
-                    sh '''
-                        # Start the services
-                        docker-compose -f docker-compose.staging.yml --env-file .env.staging up -d
                         
-                        # Wait for MongoDB to be ready
-                        echo "Waiting for MongoDB to be ready..."
+                        # Start MongoDB first
+                        docker-compose -f docker-compose.staging.yml up -d mongodb
+                        echo "Waiting for MongoDB to be healthy..."
                         sleep 20
                         
-                        # Check MongoDB container
-                        if ! docker ps | grep -q "healthslot-mongodb-staging"; then
-                            echo "MongoDB container failed to start"
-                            docker logs healthslot-mongodb-staging
-                            exit 1
-                        fi
-                        
-                        # Wait for application to be ready
+                        # Start the application
+                        docker-compose -f docker-compose.staging.yml up -d app
                         echo "Waiting for application to be ready..."
                         sleep 30
-                        
-                        # Check application container
-                        if ! docker ps | grep -q "healthslot-staging"; then
-                            echo "Application container failed to start"
-                            docker logs healthslot-staging
-                            exit 1
-                        fi
                         
                         # Show running containers
                         docker ps
@@ -173,18 +155,23 @@ pipeline {
                         RETRY_COUNT=0
                         
                         while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-                            if curl -f http://localhost:$PORT/api/health; then
+                            if wget -q --spider http://localhost:$PORT/api/health; then
                                 echo "Application is healthy"
                                 exit 0
                             fi
                             
-                            echo "Health check failed, retrying in 10 seconds..."
+                            # Check container logs if health check fails
+                            echo "Health check failed, checking container logs..."
+                            docker logs healthslot-staging
+                            
+                            echo "Retrying in 10 seconds..."
                             RETRY_COUNT=$((RETRY_COUNT + 1))
                             sleep 10
                         done
                         
                         echo "Health check failed after $MAX_RETRIES attempts"
                         docker logs healthslot-staging
+                        docker-compose -f docker-compose.staging.yml logs
                         exit 1
                     '''
                 }
