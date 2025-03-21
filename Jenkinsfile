@@ -50,6 +50,11 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
+                    // Verify Dockerfile exists
+                    if (!fileExists('Dockerfile')) {
+                        error 'Dockerfile not found in workspace'
+                    }
+                    
                     // Build Docker image
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
                     docker.build("${DOCKER_IMAGE}:latest")
@@ -74,6 +79,11 @@ pipeline {
             }
             steps {
                 script {
+                    // Verify docker-compose file exists
+                    if (!fileExists('docker-compose.staging.yml')) {
+                        error 'docker-compose.staging.yml not found in workspace'
+                    }
+                    
                     // Deploy to staging environment
                     sh """
                         docker-compose -f docker-compose.staging.yml pull
@@ -89,6 +99,11 @@ pipeline {
             }
             steps {
                 script {
+                    // Verify docker-compose file exists
+                    if (!fileExists('docker-compose.production.yml')) {
+                        error 'docker-compose.production.yml not found in workspace'
+                    }
+                    
                     // Deploy to production environment
                     sh """
                         docker-compose -f docker-compose.production.yml pull
