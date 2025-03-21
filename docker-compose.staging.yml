@@ -5,13 +5,14 @@ services:
     image: ${DOCKER_IMAGE}:${DOCKER_TAG}
     container_name: healthslot-staging
     ports:
-      - "3000:3000"
+      - "${PORT}:3000"
     environment:
       - NODE_ENV=staging
+      - PORT=${PORT}
       - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT}/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

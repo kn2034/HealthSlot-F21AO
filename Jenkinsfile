@@ -120,8 +120,22 @@ pipeline {
                         }
                     }
                     
+                    // Cleanup existing containers and volumes
+                    sh '''
+                        docker-compose -f docker-compose.staging.yml down -v || true
+                        docker rm -f healthslot-staging healthslot-mongodb-staging || true
+                        docker volume rm healthslot-pipeline2_mongodb_staging_data || true
+                    '''
+                    
                     // Deploy using docker-compose
                     sh 'docker-compose -f docker-compose.staging.yml --env-file .env.staging up -d'
+                    
+                    // Wait for services to be healthy
+                    sh '''
+                        echo "Waiting for services to be healthy..."
+                        sleep 10
+                        docker ps
+                    '''
                 }
             }
         }
