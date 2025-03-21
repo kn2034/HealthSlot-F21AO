@@ -56,8 +56,10 @@ pipeline {
                     }
                     
                     // Build Docker image
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                    docker.build("${DOCKER_IMAGE}:latest")
+                    sh """
+                        docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                        docker build -t ${DOCKER_IMAGE}:latest .
+                    """
                     
                     // Push to Docker Hub
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
@@ -69,6 +71,20 @@ pipeline {
                             docker push ${DOCKER_IMAGE}:latest
                         """
                     }
+                }
+            }
+        }
+        
+        stage('Test Container') {
+            steps {
+                script {
+                    sh """
+                        docker run --name test-container -d -p 3000:3000 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        sleep 5
+                        docker ps -a
+                        docker stop test-container || true
+                        docker rm test-container || true
+                    """
                 }
             }
         }
