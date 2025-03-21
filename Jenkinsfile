@@ -120,21 +120,51 @@ pipeline {
                         }
                     }
                     
-                    // Cleanup existing containers and volumes
+                    // Enhanced cleanup
                     sh '''
+                        # Stop and remove any existing containers with these names
                         docker-compose -f docker-compose.staging.yml down -v || true
                         docker rm -f healthslot-staging healthslot-mongodb-staging || true
+                        
+                        # Remove volumes
                         docker volume rm healthslot-pipeline2_mongodb_staging_data || true
+                        
+                        # Kill any process using the staging port
+                        PORT=$(grep "^PORT=" .env.staging | cut -d '=' -f2)
+                        lsof -ti :$PORT | xargs kill -9 || true
+                        
+                        # Wait for port to be available
+                        sleep 5
                     '''
                     
-                    // Deploy using docker-compose
-                    sh 'docker-compose -f docker-compose.staging.yml --env-file .env.staging up -d'
-                    
-                    // Wait for services to be healthy
+                    // Deploy using docker-compose with health check
                     sh '''
+                        # Start the services
+                        docker-compose -f docker-compose.staging.yml --env-file .env.staging up -d
+                        
+                        # Wait for services to be healthy
                         echo "Waiting for services to be healthy..."
-                        sleep 10
+                        sleep 15
+                        
+                        # Check container status
+                        if ! docker ps | grep -q "healthslot-staging"; then
+                            echo "Staging container failed to start"
+                            docker logs healthslot-staging
+                            exit 1
+                        fi
+                        
+                        if ! docker ps | grep -q "healthslot-mongodb-staging"; then
+                            echo "MongoDB container failed to start"
+                            docker logs healthslot-mongodb-staging
+                            exit 1
+                        fi
+                        
+                        # Show running containers
                         docker ps
+                        
+                        # Check application health
+                        PORT=$(grep "^PORT=" .env.staging | cut -d '=' -f2)
+                        curl -f http://localhost:$PORT/api/health || (echo "Health check failed" && exit 1)
                     '''
                 }
             }
