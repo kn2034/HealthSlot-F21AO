@@ -3,7 +3,7 @@
 // Test pipeline for HealthSlot project
 // Testing webhook trigger - this comment will trigger the build
 pipeline {
-    agent any
+    agent { label 'built-in' }
     
     triggers {
         githubPush()
@@ -27,25 +27,11 @@ pipeline {
     }
     
     stages {
-        stage('Verify Pipeline') {
-            steps {
-                script {
-                    echo "Verifying pipeline configuration..."
-                    echo "Running from file: Jenkinsfile.test"
-                    echo "Current workspace: ${env.WORKSPACE}"
-                    sh '''
-                        which docker || echo "Docker not found in PATH"
-                        docker --version || echo "Docker version command failed"
-                        echo "Current PATH: $PATH"
-                    '''
-                }
-            }
-        }
-        
         stage('Verify Environment') {
             steps {
                 script {
-                    echo "Checking build environment..."
+                    echo "Branch name: ${env.BRANCH_NAME}"
+                    echo "Verifying build environment..."
                     sh '''
                         echo "Workspace directory:"
                         pwd
@@ -53,30 +39,35 @@ pipeline {
                         uname -a
                         echo "Current user:"
                         whoami
+                        echo "Current PATH:"
+                        echo $PATH
                     '''
                 }
             }
         }
         
         stage('Setup Node.js') {
-            steps {
-                script {
-                    sh 'node --version'
+            when {
+                anyOf {
+                    branch 'development'
+                    branch 'qa'
                 }
+            }
+            steps {
+                echo "Setting up Node.js..."
+                sh 'node --version'
             }
         }
         
         stage('Install Dependencies') {
-            steps {
-                script {
-                    sh '''
-                        npm install
-                        npm list mongodb-memory-server
-                        echo "Installing mongodb-memory-server..."
-                        npm install --save-dev mongodb-memory-server@latest
-                        npm list mongodb-memory-server
-                    '''
+            when {
+                anyOf {
+                    branch 'development'
+                    branch 'qa'
                 }
+            }
+            steps {
+                sh 'npm ci'
             }
         }
         
@@ -88,12 +79,10 @@ pipeline {
                 }
             }
             steps {
-                script {
-                    sh '''
-                        export NODE_ENV=test
-                        NODE_OPTIONS=--max-old-space-size=4096 npm test -- --detectOpenHandles --forceExit
-                    '''
-                }
+                sh '''
+                    export NODE_ENV=test
+                    NODE_OPTIONS=--max-old-space-size=4096 npm test -- --detectOpenHandles --forceExit
+                '''
             }
         }
         
@@ -102,7 +91,7 @@ pipeline {
                 anyOf {
                     branch 'development'
                     branch 'qa'
-                    branch 'main'
+                    branch 'jenkins-pipeline'
                 }
             }
             steps {
@@ -121,7 +110,7 @@ pipeline {
                 anyOf {
                     branch 'development'
                     branch 'qa'
-                    branch 'main'
+                    branch 'jenkins-pipeline'
                 }
             }
             steps {
@@ -154,36 +143,24 @@ pipeline {
                 }
             }
         }
-        
-        stage('Deploy to Production') {
-            when {
-                branch 'main'
-            }
-            steps {
-                script {
-                    withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBECONFIG')]) {
-                        sh '''
-                            kubectl apply -f k8s/namespaces.yaml
-                            kubectl apply -f k8s/production-deployment.yaml
-                            kubectl rollout status deployment/healthslot -n production
-                            kubectl get pods,svc -n production
-                        '''
-                    }
-                }
-            }
-        }
     }
     
     post {
         always {
-            cleanWs()
+            script {
+                if (env.BRANCH_NAME == 'jenkins-pipeline') {
+                    echo "Pipeline finished - jenkins-pipeline branch"
+                } else {
+                    echo "Pipeline finished - development/qa branch"
+                    sh 'docker system prune -f || true'
+                }
+            }
         }
         success {
-            echo 'Pipeline completed successfully!'
             script {
-                try {
-                    withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
-                        withEnv(['JIRA_SITE=healthslot-jira']) {
+                if (env.BRANCH_NAME != 'jenkins-pipeline') {
+                    try {
+                        withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
                             jiraComment body: """Build #${env.BUILD_NUMBER} completed successfully
                                 Branch: ${env.BRANCH_NAME}
                                 Build URL: ${env.BUILD_URL}
@@ -191,18 +168,17 @@ pipeline {
                                 issueKey: 'AO-1',
                                 site: 'healthslot-jira'
                         }
+                    } catch (err) {
+                        echo "Failed to update JIRA: ${err.message}"
                     }
-                } catch (err) {
-                    echo "Failed to update JIRA: ${err.message}"
                 }
             }
         }
         failure {
-            echo 'Pipeline failed! Check logs for details.'
             script {
-                try {
-                    withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
-                        withEnv(['JIRA_SITE=healthslot-jira']) {
+                if (env.BRANCH_NAME != 'jenkins-pipeline') {
+                    try {
+                        withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
                             jiraComment body: """Build #${env.BUILD_NUMBER} failed
                                 Branch: ${env.BRANCH_NAME}
                                 Build URL: ${env.BUILD_URL}
@@ -211,9 +187,9 @@ pipeline {
                                 issueKey: 'AO-1',
                                 site: 'healthslot-jira'
                         }
+                    } catch (err) {
+                        echo "Failed to update JIRA: ${err.message}"
                     }
-                } catch (err) {
-                    echo "Failed to update JIRA: ${err.message}"
                 }
             }
         }
