@@ -2,41 +2,32 @@ pipeline {
     agent any
     
     environment {
-        BRANCH_NAME = "${env.BRANCH_NAME ?: 'development'}"
         NODE_VERSION = 'v16'
     }
     
     stages {
         stage('Environment Info') {
             steps {
-                echo "Running on branch: ${env.BRANCH_NAME}"
-                sh '''
-                    echo "Workspace directory:"
-                    pwd
-                    echo "Contents:"
-                    ls -la
-                '''
+                sh 'echo "Current branch: ${env.BRANCH_NAME}"'
+                sh 'ls -la'
             }
         }
-
-        stage('Setup Tools') {
+        
+        stage('Setup Node.js') {
             steps {
                 script {
-                    // Check if nvm is available
-                    sh '''
-                        echo "Checking for Node.js..."
-                        if command -v node &> /dev/null; then
-                            node -v
-                            npm -v
-                        else
-                            echo "Node.js not found"
-                            # Try to use nvm if available
-                            if [ -f "$HOME/.nvm/nvm.sh" ]; then
-                                . "$HOME/.nvm/nvm.sh"
-                                nvm install 16 || echo "Failed to install Node.js"
-                            fi
-                        fi
-                    '''
+                    try {
+                        sh 'node --version'
+                    } catch (err) {
+                        echo 'Node.js not found, installing...'
+                        sh '''
+                            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+                            export NVM_DIR="$HOME/.nvm"
+                            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                            nvm install ${NODE_VERSION}
+                            nvm use ${NODE_VERSION}
+                        '''
+                    }
                 }
             }
         }
@@ -47,8 +38,8 @@ pipeline {
                     try {
                         sh 'npm install'
                     } catch (err) {
-                        echo "Failed to run npm install: ${err}"
-                        currentBuild.result = 'UNSTABLE'
+                        unstable('Failed to install dependencies')
+                        error 'Failed to install dependencies'
                     }
                 }
             }
@@ -58,14 +49,10 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh '''
-                            echo "Would run tests here"
-                            echo "Test environment: Development"
-                            echo "Time: $(date)"
-                        '''
+                        sh 'npm test'
                     } catch (err) {
-                        echo "Failed to run tests: ${err}"
-                        currentBuild.result = 'UNSTABLE'
+                        unstable('Tests failed')
+                        error 'Tests failed'
                     }
                 }
             }
@@ -73,16 +60,14 @@ pipeline {
     }
     
     post {
+        always {
+            cleanWs()
+        }
         success {
             echo 'Pipeline completed successfully!'
-            deleteDir() /* Clean workspace */
         }
         failure {
-            echo 'Pipeline failed!'
-            deleteDir() /* Clean workspace */
-        }
-        always {
-            echo 'Pipeline finished - cleaning up...'
+            echo 'Pipeline failed! Check logs for details.'
         }
     }
 } 
