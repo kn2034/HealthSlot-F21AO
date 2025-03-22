@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: healthslot-config-staging
+  namespace: staging
+  labels:
+    app: healthslot
+    env: staging
+data:
+  NODE_ENV: "staging"
+  PORT: "3000"
+  MONGODB_URI: "mongodb://mongodb-staging:27017/healthslot"
+  JWT_SECRET: "${JWT_SECRET}"
+  JWT_EXPIRE: "24h" 

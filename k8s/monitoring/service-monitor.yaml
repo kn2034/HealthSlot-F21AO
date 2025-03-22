@@ -1,0 +1,41 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: healthslot-monitor
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: healthslot
+  namespaceSelector:
+    matchNames:
+    - staging
+    - production
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: healthslot-alerts
+  namespace: monitoring
+spec:
+  groups:
+  - name: healthslot
+    rules:
+    - alert: HighResponseTime
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        description: "95th percentile of response time is above 2 seconds"
+    - alert: HighErrorRate
+      expr: rate(http_requests_total{status=~"5.*"}[5m]) / rate(http_requests_total[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        description: "Error rate is above 5% in the last 5 minutes" 

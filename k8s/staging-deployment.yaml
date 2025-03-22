@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: healthslot
+  namespace: staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: healthslot
+  template:
+    metadata:
+      labels:
+        app: healthslot
+    spec:
+      containers:
+      - name: healthslot
+        image: kirananarayanak/healthslot:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: staging
+        - name: PORT
+          value: "3000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: healthslot
+  namespace: staging
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: healthslot
