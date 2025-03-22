@@ -138,7 +138,8 @@ module.exports = async () => {
       storageEngine: 'wiredTiger'
     },
     binary: {
-      version: '7.0.5'
+      version: process.env.MONGOMS_VERSION || '7.0.5',
+      systemBinary: process.env.MONGOMS_SYSTEM_BINARY || '/opt/homebrew/bin/mongod'
     }
   });
   global.__MONGOD__ = mongod;
