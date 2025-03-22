@@ -232,58 +232,33 @@ EOL
                 }
             }
             steps {
-                script {
-                    try {
-                        // Create a temporary directory for kubeconfig
-                        sh '''
-                            # Create .kube directory in workspace
-                            mkdir -p "${WORKSPACE}/.kube"
-                            
-                            # Write kubeconfig to file with proper yaml formatting
-                            echo "${KUBECONFIG_CREDENTIALS}" > "${WORKSPACE}/.kube/config"
-                            
-                            # Set proper permissions
-                            chmod 600 "${WORKSPACE}/.kube/config"
-                            
-                            # Export KUBECONFIG to use our temporary config
-                            export KUBECONFIG="${WORKSPACE}/.kube/config"
-                            
-                            # Verify kubectl can connect
-                            kubectl cluster-info
-                            
-                            # Apply configurations in order with error checking
-                            echo "Applying namespace configuration..."
-                            kubectl apply -f k8s/namespaces.yaml
-                            
-                            echo "Applying configmap..."
-                            kubectl apply -f k8s/configmap.yaml
-                            
-                            echo "Applying MongoDB configuration..."
-                            kubectl apply -f k8s/mongodb.yaml
-                            
-                            echo "Applying staging deployment..."
-                            kubectl apply -f k8s/staging-deployment.yaml
-                            
-                            echo "Updating container image..."
-                            kubectl set image deployment/healthslot healthslot=${DOCKER_IMAGE}:${DOCKER_TAG} -n staging
-                            
-                            echo "Waiting for rollout to complete..."
-                            kubectl rollout status deployment/healthslot -n staging --timeout=300s
-                            
-                            echo "Verifying deployment..."
-                            kubectl get deployment healthslot -n staging -o wide
-                        '''
-                    } catch (Exception e) {
-                        echo "Deployment failed: ${e.getMessage()}"
-                        currentBuild.result = 'FAILURE'
-                        error "Deployment to staging failed: ${e.getMessage()}"
-                    } finally {
-                        // Clean up sensitive files
-                        sh '''
-                            rm -f "${WORKSPACE}/.kube/config"
-                            rm -rf "${WORKSPACE}/.kube"
-                        '''
-                    }
+                withKubeConfig([credentialsId: KUBECONFIG_CREDENTIALS]) {
+                    sh """
+                        # Verify kubectl can connect
+                        kubectl cluster-info
+                        
+                        # Apply configurations in order with error checking
+                        echo "Applying namespace configuration..."
+                        kubectl apply -f k8s/namespaces.yaml
+                        
+                        echo "Applying configmap..."
+                        kubectl apply -f k8s/configmap.yaml
+                        
+                        echo "Applying MongoDB configuration..."
+                        kubectl apply -f k8s/mongodb.yaml
+                        
+                        echo "Applying staging deployment..."
+                        kubectl apply -f k8s/staging-deployment.yaml
+                        
+                        echo "Updating container image..."
+                        kubectl set image deployment/healthslot healthslot=${DOCKER_IMAGE}:${DOCKER_TAG} -n staging
+                        
+                        echo "Waiting for rollout to complete..."
+                        kubectl rollout status deployment/healthslot -n staging --timeout=300s
+                        
+                        echo "Verifying deployment..."
+                        kubectl get deployment healthslot -n staging -o wide
+                    """
                 }
             }
         }

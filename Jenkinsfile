@@ -69,17 +69,18 @@ pipeline {
                     sh """
                         # Apply configurations in order
                         kubectl apply -f k8s/namespaces.yaml
-                        kubectl apply -f k8s/staging/configmap.yaml
-                        kubectl apply -f k8s/staging/network-policies.yaml
-                        kubectl apply -f k8s/staging/mongodb.yaml
-                        kubectl apply -f k8s/staging/app-deployment.yaml
-                        kubectl apply -f k8s/staging/hpa.yaml
+                        kubectl apply -f k8s/configmap.yaml
+                        kubectl apply -f k8s/mongodb.yaml
+                        kubectl apply -f k8s/staging-deployment.yaml
                         
                         # Update image
-                        kubectl set image deployment/healthslot-staging healthslot=${DOCKER_IMAGE}:${DOCKER_TAG} -n staging
+                        kubectl set image deployment/healthslot healthslot=${DOCKER_IMAGE}:${DOCKER_TAG} -n staging
                         
-                        # Wait for rollout
-                        kubectl rollout status deployment/healthslot-staging -n staging
+                        # Wait for rollout with timeout
+                        kubectl rollout status deployment/healthslot -n staging --timeout=300s
+                        
+                        # Verify deployment
+                        kubectl get pods -n staging -l app=healthslot
                     """
                 }
             }
