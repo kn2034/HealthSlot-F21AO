@@ -13,6 +13,7 @@ const transferRoutes = require('./src/routes/transfer.routes');
 const testRegistrationRoutes = require('./src/routes/testRegistration.routes');
 const labTestRoutes = require('./src/routes/labTest.routes');
 const testResultRoutes = require('./src/routes/testResult.routes');
+const healthRoutes = require('./src/routes/health.routes');
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
 }));
 
 // Routes
+app.use('/api', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/admissions', admissionRoutes);

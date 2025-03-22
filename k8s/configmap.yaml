@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: healthslot-config
+  labels:
+    app: healthslot
+data:
+  NODE_ENV: "development"
+  PORT: "3000"
+  MONGODB_URI: "mongodb://mongodb-service:27017/healthslot"
+  JWT_SECRET: "your-development-secret"
+  JWT_EXPIRE: "24h" 
