@@ -7,17 +7,23 @@ const Patient = require('../models/Patient');
 let mongoServer;
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
+  mongoServer = await MongoMemoryServer.create({
+    instance: {
+      dbName: 'test',
+      storageEngine: 'wiredTiger'
+    },
+    binary: {
+      version: process.env.MONGOMS_VERSION || '7.0.5',
+      systemBinary: process.env.MONGOMS_SYSTEM_BINARY || '/opt/homebrew/bin/mongod'
+    }
+  });
   const mongoUri = mongoServer.getUri();
   
   // Disconnect from any existing connection
   await mongoose.disconnect();
   
   // Connect to the in-memory database
-  await mongoose.connect(mongoUri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  });
+  await mongoose.connect(mongoUri);
 });
 
 afterAll(async () => {
