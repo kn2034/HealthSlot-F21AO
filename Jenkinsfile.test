@@ -136,6 +136,9 @@ module.exports = async () => {
     instance: {
       dbName: 'test',
       storageEngine: 'wiredTiger'
+    },
+    binary: {
+      version: '7.0.5'
     }
   });
   global.__MONGOD__ = mongod;
