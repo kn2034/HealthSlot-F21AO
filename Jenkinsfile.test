@@ -25,6 +25,7 @@ pipeline {
         JIRA_CREDENTIALS = credentials('jira-credentials')
         PATH = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:${env.PATH}"
         BRANCH_NAME = "${env.GIT_BRANCH?.replaceFirst('^origin/', '') ?: 'unknown'}"
+        IS_HEALTHSLOT_PIPELINE = "${env.JOB_NAME?.contains('HealthSlot-Pipeline')}"
     }
     
     stages {
@@ -34,6 +35,8 @@ pipeline {
                     echo "Pipeline running on branch: ${env.BRANCH_NAME}"
                     echo "Git Branch: ${env.GIT_BRANCH}"
                     echo "Build URL: ${env.BUILD_URL}"
+                    echo "Job Name: ${env.JOB_NAME}"
+                    echo "Is HealthSlot Pipeline: ${env.IS_HEALTHSLOT_PIPELINE}"
                     sh '''
                         echo "Workspace directory:"
                         pwd
@@ -52,7 +55,7 @@ pipeline {
         stage('Setup Node.js') {
             when {
                 expression { 
-                    return env.BRANCH_NAME in ['development', 'qa'] 
+                    return env.IS_HEALTHSLOT_PIPELINE == 'true' || env.BRANCH_NAME in ['development', 'qa']
                 }
             }
             steps {
@@ -64,7 +67,7 @@ pipeline {
         stage('Install Dependencies') {
             when {
                 expression { 
-                    return env.BRANCH_NAME in ['development', 'qa'] 
+                    return env.IS_HEALTHSLOT_PIPELINE == 'true' || env.BRANCH_NAME in ['development', 'qa']
                 }
             }
             steps {
@@ -75,7 +78,7 @@ pipeline {
         stage('Run Tests') {
             when {
                 expression { 
-                    return env.BRANCH_NAME in ['development', 'qa'] 
+                    return env.IS_HEALTHSLOT_PIPELINE == 'true' || env.BRANCH_NAME in ['development', 'qa']
                 }
             }
             steps {
@@ -89,7 +92,7 @@ pipeline {
         stage('Build Docker Image') {
             when {
                 expression { 
-                    return env.BRANCH_NAME in ['development', 'qa', 'jenkins-pipeline'] 
+                    return env.IS_HEALTHSLOT_PIPELINE == 'true' || env.BRANCH_NAME in ['development', 'qa', 'jenkins-pipeline']
                 }
             }
             steps {
@@ -106,7 +109,7 @@ pipeline {
         stage('Push Docker Image') {
             when {
                 expression { 
-                    return env.BRANCH_NAME in ['development', 'qa', 'jenkins-pipeline'] 
+                    return env.IS_HEALTHSLOT_PIPELINE == 'true' || env.BRANCH_NAME in ['development', 'qa', 'jenkins-pipeline']
                 }
             }
             steps {
