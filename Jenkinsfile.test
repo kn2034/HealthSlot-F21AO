@@ -1,14 +1,29 @@
+#!/usr/bin/env groovy
+
 pipeline {
     // This Jenkinsfile is used for automated CI/CD of the HealthSlot project
     // Monitored branches: main (production), develop (staging), qa (testing)
-    agent {
-        docker {
-            image 'node:16'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
+    agent any
+    
+    triggers {
+        githubPush()
+    }
+    
+    options {
+        skipDefaultCheckout(false)
+        disableConcurrentBuilds()
     }
     
     environment {
+        NODE_VERSION = 'v16'
+        DOCKER_HUB_USERNAME = 'kirananarayanak'
+        DOCKER_IMAGE = "${DOCKER_HUB_USERNAME}/healthslot"
+        DOCKER_TAG = "${env.BUILD_NUMBER}"
+        DOCKER_CREDENTIALS = credentials('dockerhub-credentials')
+        KUBECONFIG_CREDENTIALS = credentials('kubeconfig-credentials')
+        JIRA_SITE = 'healthslot-jira'
+        JIRA_CREDENTIALS = credentials('jira-credentials')
+        PATH = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:${env.PATH}"
         DOCKER_REGISTRY = 'registry.example.com'
         IMAGE_NAME = 'healthslot'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
