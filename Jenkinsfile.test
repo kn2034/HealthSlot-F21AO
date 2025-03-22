@@ -233,10 +233,8 @@ EOL
             }
             steps {
                 withKubeConfig([
-                    credentialsId: 'kubeconfig-credentials',
-                    serverUrl: 'https://127.0.0.1:60824',
-                    contextName: 'minikube',
-                    namespace: 'staging'
+                    credentialsId: 'kubeconfig',
+                    serverUrl: 'https://127.0.0.1:60824'
                 ]) {
                     sh """
                         # Test kubectl connection
