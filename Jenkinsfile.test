@@ -60,7 +60,15 @@ pipeline {
             }
             steps {
                 echo "Setting up Node.js..."
-                sh 'node --version'
+                sh '''
+                    # Use nvm to install and use Node.js v16
+                    export NVM_DIR="$HOME/.nvm"
+                    [ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"
+                    nvm install 16
+                    nvm use 16
+                    node --version
+                    npm --version
+                '''
             }
         }
         
@@ -71,7 +79,17 @@ pipeline {
                 }
             }
             steps {
-                sh 'npm ci'
+                sh '''
+                    # Install all dependencies including dev dependencies
+                    npm install
+                    
+                    # Explicitly install test dependencies
+                    npm install --save-dev mongodb-memory-server@8.15.1 jest supertest
+                    
+                    # List installed packages
+                    echo "Installed packages:"
+                    npm list --depth=0
+                '''
             }
         }
         
@@ -84,7 +102,15 @@ pipeline {
             steps {
                 sh '''
                     export NODE_ENV=test
-                    NODE_OPTIONS=--max-old-space-size=4096 npm test -- --detectOpenHandles --forceExit
+                    export NODE_OPTIONS="--max-old-space-size=4096"
+                    
+                    # Show test environment
+                    echo "Node version: $(node --version)"
+                    echo "NPM version: $(npm --version)"
+                    echo "NODE_ENV: $NODE_ENV"
+                    
+                    # Run tests with detailed output
+                    npm test -- --detectOpenHandles --forceExit --verbose
                 '''
             }
         }
