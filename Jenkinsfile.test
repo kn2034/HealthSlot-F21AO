@@ -1,5 +1,9 @@
 pipeline {
-    agent any
+    agent {
+        node {
+            label 'any'
+        }
+    }
     
     environment {
         NODE_VERSION = 'v16'
@@ -8,8 +12,10 @@ pipeline {
     stages {
         stage('Environment Info') {
             steps {
-                sh 'echo "Current branch: ${env.BRANCH_NAME}"'
-                sh 'ls -la'
+                script {
+                    sh 'echo "Current branch: ${env.BRANCH_NAME}"'
+                    sh 'ls -la'
+                }
             }
         }
         
@@ -61,7 +67,13 @@ pipeline {
     
     post {
         always {
-            cleanWs()
+            script {
+                cleanWs(
+                    cleanWhenSuccess: true,
+                    cleanWhenFailure: true,
+                    cleanWhenUnstable: true
+                )
+            }
         }
         success {
             echo 'Pipeline completed successfully!'
