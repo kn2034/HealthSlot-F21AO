@@ -70,7 +70,19 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh 'npm install'
+                        sh '''
+                            # Install all dependencies including dev dependencies
+                            npm install
+                            
+                            # Explicitly install mongodb-memory-server if not present
+                            if ! npm list mongodb-memory-server >/dev/null 2>&1; then
+                                echo "Installing mongodb-memory-server..."
+                                npm install --save-dev mongodb-memory-server@latest
+                            fi
+                            
+                            # Verify mongodb-memory-server installation
+                            npm list mongodb-memory-server
+                        '''
                     } catch (err) {
                         echo "Error installing dependencies: ${err}"
                         unstable('Failed to install dependencies')
@@ -84,7 +96,13 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh 'npm test'
+                        sh '''
+                            # Set NODE_ENV to test
+                            export NODE_ENV=test
+                            
+                            # Run tests with increased memory limit and timeout
+                            NODE_OPTIONS="--max-old-space-size=4096" npm test -- --detectOpenHandles --forceExit
+                        '''
                     } catch (err) {
                         echo "Error running tests: ${err}"
                         unstable('Tests failed')
