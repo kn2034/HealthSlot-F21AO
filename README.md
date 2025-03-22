@@ -82,6 +82,7 @@ npm run lint
 
 The HealthSlot application uses a comprehensive Jenkins CI/CD pipeline for automated building, testing, and deployment. Our pipeline includes:
 
+- GitHub webhook integration for automatic builds on code push
 - Multi-stage Docker builds for optimized production images
 - Automated testing with Jest and Supertest
 - Linting with ESLint to ensure code quality
