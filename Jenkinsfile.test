@@ -28,6 +28,9 @@ pipeline {
         IS_HEALTHSLOT_PIPELINE = "${env.JOB_NAME?.contains('HealthSlot-Pipeline')}"
         JEST_TIMEOUT = '30000'
         MONGOMS_VERSION = '7.0.5'
+        MONGOMS_DEBUG = '1'
+        MONGOMS_DOWNLOAD_URL = 'https://fastdl.mongodb.org/osx/mongodb-macos-arm64-7.0.5.tgz'
+        MONGOMS_SYSTEM_BINARY = '/opt/homebrew/bin/mongod'
     }
     
     stages {
@@ -105,6 +108,9 @@ pipeline {
                     # Clean install
                     rm -rf node_modules package-lock.json
                     
+                    # Install MongoDB via Homebrew if not present
+                    brew install mongodb-community@7.0 || true
+                    
                     # Install all dependencies including dev dependencies
                     npm install
                     
@@ -123,7 +129,10 @@ module.exports = {
   setupFilesAfterEnv: ["./jest.setup.js"],
   verbose: true,
   detectOpenHandles: true,
-  forceExit: true
+  forceExit: true,
+  testPathIgnorePatterns: ["/node_modules/"],
+  globalSetup: "./jest.global-setup.js",
+  globalTeardown: "./jest.global-teardown.js"
 };
 EOL
                     
@@ -139,6 +148,36 @@ beforeAll(() => {
 afterAll(() => {
   console.log('Global test cleanup - finishing');
 });
+EOL
+
+                    # Create global setup file
+                    cat > jest.global-setup.js << 'EOL'
+const { MongoMemoryServer } = require('mongodb-memory-server');
+
+module.exports = async () => {
+  const mongod = await MongoMemoryServer.create({
+    instance: {
+      port: 27017,
+      dbName: 'test',
+      storageEngine: 'wiredTiger'
+    },
+    binary: {
+      version: '7.0.5',
+      systemBinary: '/opt/homebrew/bin/mongod'
+    }
+  });
+  global.__MONGOD__ = mongod;
+  process.env.MONGODB_URI = mongod.getUri();
+};
+EOL
+
+                    # Create global teardown file
+                    cat > jest.global-teardown.js << 'EOL'
+module.exports = async () => {
+  if (global.__MONGOD__) {
+    await global.__MONGOD__.stop();
+  }
+};
 EOL
                     
                     # List installed packages
@@ -164,15 +203,17 @@ EOL
                     export MONGOMS_VERSION=7.0.5
                     export MONGOMS_DEBUG=1
                     export JEST_TIMEOUT=30000
+                    export MONGOMS_SYSTEM_BINARY=/opt/homebrew/bin/mongod
                     
                     # Show test environment
                     echo "Node version: $(node --version)"
                     echo "NPM version: $(npm --version)"
                     echo "NODE_ENV: $NODE_ENV"
                     echo "MongoDB Memory Server Version: $MONGOMS_VERSION"
+                    echo "MongoDB System Binary: $MONGOMS_SYSTEM_BINARY"
                     
                     # Run tests with detailed output
-                    npm test -- --runInBand
+                    npm test -- --runInBand --verbose
                 '''
             }
         }
