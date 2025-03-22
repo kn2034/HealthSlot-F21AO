@@ -1,9 +1,14 @@
 #!/usr/bin/env groovy
 
 // Test pipeline for HealthSlot project
+// Testing webhook trigger - this comment will trigger the build
 pipeline {
     agent {
         label 'built-in'
+    }
+    
+    triggers {
+        githubPush()
     }
     
     options {
