@@ -24,14 +24,16 @@ pipeline {
         JIRA_SITE = 'healthslot-jira'
         JIRA_CREDENTIALS = credentials('jira-credentials')
         PATH = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:${env.PATH}"
+        BRANCH_NAME = "${env.GIT_BRANCH?.replaceFirst('^origin/', '') ?: 'unknown'}"
     }
     
     stages {
         stage('Verify Environment') {
             steps {
                 script {
-                    echo "Branch name: ${env.BRANCH_NAME}"
-                    echo "Verifying build environment..."
+                    echo "Pipeline running on branch: ${env.BRANCH_NAME}"
+                    echo "Git Branch: ${env.GIT_BRANCH}"
+                    echo "Build URL: ${env.BUILD_URL}"
                     sh '''
                         echo "Workspace directory:"
                         pwd
@@ -39,8 +41,9 @@ pipeline {
                         uname -a
                         echo "Current user:"
                         whoami
-                        echo "Current PATH:"
-                        echo $PATH
+                        echo "Git info:"
+                        git branch --show-current || true
+                        git rev-parse HEAD || true
                     '''
                 }
             }
@@ -48,9 +51,8 @@ pipeline {
         
         stage('Setup Node.js') {
             when {
-                anyOf {
-                    branch 'development'
-                    branch 'qa'
+                expression { 
+                    return env.BRANCH_NAME in ['development', 'qa'] 
                 }
             }
             steps {
@@ -61,9 +63,8 @@ pipeline {
         
         stage('Install Dependencies') {
             when {
-                anyOf {
-                    branch 'development'
-                    branch 'qa'
+                expression { 
+                    return env.BRANCH_NAME in ['development', 'qa'] 
                 }
             }
             steps {
@@ -73,9 +74,8 @@ pipeline {
         
         stage('Run Tests') {
             when {
-                anyOf {
-                    branch 'development'
-                    branch 'qa'
+                expression { 
+                    return env.BRANCH_NAME in ['development', 'qa'] 
                 }
             }
             steps {
@@ -88,15 +88,13 @@ pipeline {
         
         stage('Build Docker Image') {
             when {
-                anyOf {
-                    branch 'development'
-                    branch 'qa'
-                    branch 'jenkins-pipeline'
+                expression { 
+                    return env.BRANCH_NAME in ['development', 'qa', 'jenkins-pipeline'] 
                 }
             }
             steps {
                 script {
-                    def branchTag = env.BRANCH_NAME == 'main' ? 'latest' : env.BRANCH_NAME
+                    def branchTag = env.BRANCH_NAME
                     sh """
                         docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG}-${branchTag} .
                         docker tag ${DOCKER_IMAGE}:${DOCKER_TAG}-${branchTag} ${DOCKER_IMAGE}:${branchTag}
@@ -107,15 +105,13 @@ pipeline {
         
         stage('Push Docker Image') {
             when {
-                anyOf {
-                    branch 'development'
-                    branch 'qa'
-                    branch 'jenkins-pipeline'
+                expression { 
+                    return env.BRANCH_NAME in ['development', 'qa', 'jenkins-pipeline'] 
                 }
             }
             steps {
                 script {
-                    def branchTag = env.BRANCH_NAME == 'main' ? 'latest' : env.BRANCH_NAME
+                    def branchTag = env.BRANCH_NAME
                     sh """
                         echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
                         docker push ${DOCKER_IMAGE}:${DOCKER_TAG}-${branchTag}
@@ -128,7 +124,9 @@ pipeline {
         
         stage('Deploy to Staging') {
             when {
-                branch 'qa'
+                expression { 
+                    return env.BRANCH_NAME == 'qa'
+                }
             }
             steps {
                 script {
@@ -148,17 +146,19 @@ pipeline {
     post {
         always {
             script {
-                if (env.BRANCH_NAME == 'jenkins-pipeline') {
-                    echo "Pipeline finished - jenkins-pipeline branch"
+                def isBuildPipeline = env.JOB_NAME?.contains('HealthSlot-Pipeline')
+                if (isBuildPipeline) {
+                    echo "Pipeline finished - HealthSlot Pipeline"
                 } else {
-                    echo "Pipeline finished - development/qa branch"
+                    echo "Pipeline finished - Test Pipeline"
                     sh 'docker system prune -f || true'
                 }
             }
         }
         success {
             script {
-                if (env.BRANCH_NAME != 'jenkins-pipeline') {
+                def isBuildPipeline = env.JOB_NAME?.contains('HealthSlot-Pipeline')
+                if (!isBuildPipeline) {
                     try {
                         withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
                             jiraComment body: """Build #${env.BUILD_NUMBER} completed successfully
@@ -176,7 +176,8 @@ pipeline {
         }
         failure {
             script {
-                if (env.BRANCH_NAME != 'jenkins-pipeline') {
+                def isBuildPipeline = env.JOB_NAME?.contains('HealthSlot-Pipeline')
+                if (!isBuildPipeline) {
                     try {
                         withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
                             jiraComment body: """Build #${env.BUILD_NUMBER} failed
