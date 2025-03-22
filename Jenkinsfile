@@ -9,7 +9,6 @@ pipeline {
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIALS = 'docker-hub-credentials'
         KUBECONFIG_CREDENTIALS = 'kubeconfig-credentials'
-        JIRA_SITE = 'healthslot-jira'
         MONGODB_URI_DEV = credentials('mongodb-uri-dev')
         MONGODB_URI_STAGING = credentials('mongodb-uri-staging')
         MONGODB_URI_PROD = credentials('mongodb-uri-prod')
@@ -156,16 +155,11 @@ pipeline {
         success {
             script {
                 if (env.BRANCH_NAME == 'staging' || env.BRANCH_NAME == 'main') {
-                    jiraSendBuildInfo site: JIRA_SITE, branch: env.BRANCH_NAME
+                    echo "Build successful on ${env.BRANCH_NAME} branch"
                 }
             }
         }
         failure {
-            script {
-                if (env.BRANCH_NAME == 'staging' || env.BRANCH_NAME == 'main') {
-                    jiraSendBuildInfo site: JIRA_SITE, branch: env.BRANCH_NAME
-                }
-            }
             emailext (
                 subject: "Pipeline Failed: ${currentBuild.fullDisplayName}",
                 body: "Pipeline failed at stage: ${env.STAGE_NAME}",

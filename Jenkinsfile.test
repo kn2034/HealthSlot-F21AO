@@ -20,8 +20,6 @@ pipeline {
         DOCKER_IMAGE = "${DOCKER_HUB_USERNAME}/healthslot"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIALS = credentials('dockerhub-credentials')
-        JIRA_SITE = 'healthslot-jira'
-        JIRA_CREDENTIALS = credentials('jira-credentials')
         PATH = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:${env.PATH}"
         BRANCH_NAME = "${env.GIT_BRANCH?.replaceFirst('^origin/', '') ?: 'unknown'}"
         IS_HEALTHSLOT_PIPELINE = "${env.JOB_NAME?.contains('HealthSlot-Pipeline')}"
@@ -252,11 +250,6 @@ EOL
         always {
             node('built-in') {
                 cleanWs()
-            }
-        }
-        success {
-            node('built-in') {
-                jiraSendBuildInfo site: "${JIRA_SITE}", branch: "${BRANCH_NAME}"
             }
         }
     }
