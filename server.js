@@ -6,7 +6,7 @@ const winston = require('winston');
 dotenv.config();
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '8081', 10);
+const port = process.env.PORT || 3005;
 
 // Configure Winston logger
 const logger = winston.createLogger({
@@ -27,11 +27,11 @@ app.get('/api/health', (req, res) => {
 });
 
 // Start server
-const server = app.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
+const server = app.listen(port, () => {
+  logger.info(`Server is running on port ${port}`);
 }).on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    logger.error(`Port ${PORT} is already in use. Please use a different port.`);
+    logger.error(`Port ${port} is already in use. Please use a different port.`);
     process.exit(1);
   } else {
     logger.error('Server failed to start:', err);
