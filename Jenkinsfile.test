@@ -34,33 +34,9 @@ pipeline {
     }
     
     stages {
-        stage('Verify Environment') {
+        stage('Checkout') {
             steps {
-                script {
-                    echo "Pipeline running on branch: ${env.BRANCH_NAME}"
-                    echo "Git Branch: ${env.GIT_BRANCH}"
-                    echo "Build URL: ${env.BUILD_URL}"
-                    echo "Job Name: ${env.JOB_NAME}"
-                    echo "Is HealthSlot Pipeline: ${env.IS_HEALTHSLOT_PIPELINE}"
-                    sh '''
-                        echo "Workspace directory:"
-                        pwd
-                        echo "System information:"
-                        uname -a
-                        echo "Current user:"
-                        whoami
-                        echo "Git info:"
-                        git branch --show-current || true
-                        git rev-parse HEAD || true
-                        
-                        # Check Homebrew
-                        echo "Homebrew version:"
-                        brew --version || true
-                        
-                        # Update Homebrew
-                        brew update
-                    '''
-                }
+                checkout scm
             }
         }
         
@@ -71,24 +47,25 @@ pipeline {
                 }
             }
             steps {
-                echo "Setting up Node.js..."
                 sh '''
-                    # Install Node.js 18 LTS
-                    echo "Installing/Updating Node.js 18..."
-                    brew install node@18 || brew upgrade node@18 || true
+                    # Update Homebrew
+                    brew update
+                    
+                    # Install or upgrade Node.js
+                    brew install node@18 || brew upgrade node@18
+                    
+                    # Unlink any existing node and link node@18
                     brew unlink node || true
-                    brew link --overwrite node@18
+                    brew link node@18
                     
                     # Add Homebrew's node path to PATH
                     export PATH="/opt/homebrew/opt/node@18/bin:$PATH"
                     
-                    # Verify installation
-                    echo "Node.js version:"
+                    # Verify installations
                     node --version
-                    echo "NPM version:"
                     npm --version
                     
-                    # Update npm to latest compatible version
+                    # Update npm to latest version
                     npm install -g npm@10
                 '''
             }
@@ -157,17 +134,13 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 module.exports = async () => {
   const mongod = await MongoMemoryServer.create({
     instance: {
-      port: 27017,
       dbName: 'test',
       storageEngine: 'wiredTiger'
-    },
-    binary: {
-      version: '7.0.5',
-      systemBinary: '/opt/homebrew/bin/mongod'
     }
   });
   global.__MONGOD__ = mongod;
   process.env.MONGODB_URI = mongod.getUri();
+  console.log('MongoDB Memory Server URI:', process.env.MONGODB_URI);
 };
 EOL
 
@@ -176,6 +149,7 @@ EOL
 module.exports = async () => {
   if (global.__MONGOD__) {
     await global.__MONGOD__.stop();
+    console.log('MongoDB Memory Server stopped');
   }
 };
 EOL
@@ -221,110 +195,60 @@ EOL
         stage('Build Docker Image') {
             when {
                 expression { 
-                    return env.IS_HEALTHSLOT_PIPELINE == 'true' || env.BRANCH_NAME in ['development', 'qa', 'jenkins-pipeline']
+                    return env.IS_HEALTHSLOT_PIPELINE == 'true' || env.BRANCH_NAME in ['development', 'qa']
                 }
             }
             steps {
-                script {
-                    def branchTag = env.BRANCH_NAME
-                    sh """
-                        docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG}-${branchTag} .
-                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG}-${branchTag} ${DOCKER_IMAGE}:${branchTag}
-                    """
-                }
+                sh '''
+                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                    docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                '''
             }
         }
         
         stage('Push Docker Image') {
             when {
                 expression { 
-                    return env.IS_HEALTHSLOT_PIPELINE == 'true' || env.BRANCH_NAME in ['development', 'qa', 'jenkins-pipeline']
+                    return env.IS_HEALTHSLOT_PIPELINE == 'true' || env.BRANCH_NAME in ['development', 'qa']
                 }
             }
             steps {
-                script {
-                    def branchTag = env.BRANCH_NAME
-                    sh """
-                        echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
-                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}-${branchTag}
-                        docker push ${DOCKER_IMAGE}:${branchTag}
-                        docker logout
-                    """
-                }
+                sh '''
+                    echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_CREDENTIALS_USR} --password-stdin
+                    docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    docker push ${DOCKER_IMAGE}:latest
+                '''
             }
         }
         
         stage('Deploy to Staging') {
             when {
                 expression { 
-                    return env.BRANCH_NAME == 'qa'
+                    return env.IS_HEALTHSLOT_PIPELINE == 'true' || env.BRANCH_NAME in ['development', 'qa']
                 }
             }
             steps {
-                script {
-                    withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBECONFIG')]) {
-                        sh '''
-                            kubectl apply -f k8s/namespaces.yaml
-                            kubectl apply -f k8s/staging-deployment.yaml
-                            kubectl rollout status deployment/healthslot -n staging
-                            kubectl get pods,svc -n staging
-                        '''
-                    }
-                }
+                sh '''
+                    # Write kubeconfig to file
+                    echo "${KUBECONFIG_CREDENTIALS}" > kubeconfig.yaml
+                    export KUBECONFIG=kubeconfig.yaml
+                    
+                    # Update deployment image
+                    kubectl set image deployment/healthslot healthslot=${DOCKER_IMAGE}:${DOCKER_TAG} -n staging
+                    
+                    # Wait for rollout to complete
+                    kubectl rollout status deployment/healthslot -n staging
+                '''
             }
         }
     }
     
     post {
         always {
-            script {
-                def isBuildPipeline = env.JOB_NAME?.contains('HealthSlot-Pipeline')
-                if (isBuildPipeline) {
-                    echo "Pipeline finished - HealthSlot Pipeline"
-                } else {
-                    echo "Pipeline finished - Test Pipeline"
-                    sh 'docker system prune -f || true'
-                }
-            }
+            cleanWs()
         }
         success {
-            script {
-                def isBuildPipeline = env.JOB_NAME?.contains('HealthSlot-Pipeline')
-                if (!isBuildPipeline) {
-                    try {
-                        withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
-                            jiraComment body: """Build #${env.BUILD_NUMBER} completed successfully
-                                Branch: ${env.BRANCH_NAME}
-                                Build URL: ${env.BUILD_URL}
-                                Commit: ${env.GIT_COMMIT}""",
-                                issueKey: 'AO-1',
-                                site: 'healthslot-jira'
-                        }
-                    } catch (err) {
-                        echo "Failed to update JIRA: ${err.message}"
-                    }
-                }
-            }
-        }
-        failure {
-            script {
-                def isBuildPipeline = env.JOB_NAME?.contains('HealthSlot-Pipeline')
-                if (!isBuildPipeline) {
-                    try {
-                        withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
-                            jiraComment body: """Build #${env.BUILD_NUMBER} failed
-                                Branch: ${env.BRANCH_NAME}
-                                Build URL: ${env.BUILD_URL}
-                                Commit: ${env.GIT_COMMIT}
-                                Please check Jenkins logs for details.""",
-                                issueKey: 'AO-1',
-                                site: 'healthslot-jira'
-                        }
-                    } catch (err) {
-                        echo "Failed to update JIRA: ${err.message}"
-                    }
-                }
-            }
+            jiraSendBuildInfo site: "${JIRA_SITE}", branch: "${BRANCH_NAME}"
         }
     }
 } 
