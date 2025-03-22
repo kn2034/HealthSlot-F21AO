@@ -3,9 +3,7 @@
 // Test pipeline for HealthSlot project
 // Testing webhook trigger - this comment will trigger the build
 pipeline {
-    agent {
-        label 'built-in'
-    }
+    agent any
     
     triggers {
         githubPush()
@@ -20,9 +18,6 @@ pipeline {
         NODE_VERSION = 'v16'
         DOCKER_IMAGE = 'healthslot'
         DOCKER_TAG = "${env.BUILD_NUMBER}"
-        DOCKER_CREDENTIALS = credentials('docker-hub-credentials')
-        KUBECONFIG_CREDENTIALS = credentials('kubeconfig-credentials')
-        JIRA_SITE = 'healthslot-jira'
     }
     
     stages {
@@ -120,78 +115,17 @@ pipeline {
                     }
                 }
             }
-            post {
-                always {
-                    junit '**/test-results.xml'
-                }
-            }
-        }
-        
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                }
-            }
-        }
-        
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    docker.withRegistry('https://registry.hub.docker.com', DOCKER_CREDENTIALS) {
-                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push('latest')
-                    }
-                }
-            }
-        }
-        
-        stage('Deploy to Staging') {
-            when {
-                branch 'development'
-            }
-            steps {
-                withKubeConfig([credentialsId: KUBECONFIG_CREDENTIALS]) {
-                    sh '''
-                        # Apply configurations in order
-                        kubectl apply -f k8s/namespaces.yaml
-                        kubectl apply -f k8s/staging/configmap.yaml
-                        kubectl apply -f k8s/staging/mongodb.yaml
-                        kubectl apply -f k8s/staging/app-deployment.yaml
-                        
-                        # Update image
-                        kubectl set image deployment/healthslot-staging healthslot=${DOCKER_IMAGE}:${DOCKER_TAG} -n staging
-                        
-                        # Wait for rollout
-                        kubectl rollout status deployment/healthslot-staging -n staging
-                    '''
-                }
-            }
         }
     }
     
     post {
         always {
-            script {
-                echo 'Cleaning workspace...'
-                cleanWs(
-                    cleanWhenSuccess: true,
-                    cleanWhenFailure: true,
-                    cleanWhenUnstable: true,
-                    deleteDirs: true
-                )
-            }
+            cleanWs()
         }
         success {
-            script {
-                jiraSendBuildInfo site: JIRA_SITE, branch: env.BRANCH_NAME
-            }
             echo 'Pipeline completed successfully!'
         }
         failure {
-            script {
-                jiraSendBuildInfo site: JIRA_SITE, branch: env.BRANCH_NAME
-            }
             echo 'Pipeline failed! Check logs for details.'
         }
     }
