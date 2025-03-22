@@ -1,0 +1,88 @@
+pipeline {
+    agent any
+    
+    environment {
+        BRANCH_NAME = "${env.BRANCH_NAME ?: 'development'}"
+        NODE_VERSION = 'v16'
+    }
+    
+    stages {
+        stage('Environment Info') {
+            steps {
+                echo "Running on branch: ${env.BRANCH_NAME}"
+                sh '''
+                    echo "Workspace directory:"
+                    pwd
+                    echo "Contents:"
+                    ls -la
+                '''
+            }
+        }
+
+        stage('Setup Tools') {
+            steps {
+                script {
+                    // Check if nvm is available
+                    sh '''
+                        echo "Checking for Node.js..."
+                        if command -v node &> /dev/null; then
+                            node -v
+                            npm -v
+                        else
+                            echo "Node.js not found"
+                            # Try to use nvm if available
+                            if [ -f "$HOME/.nvm/nvm.sh" ]; then
+                                . "$HOME/.nvm/nvm.sh"
+                                nvm install 16 || echo "Failed to install Node.js"
+                            fi
+                        fi
+                    '''
+                }
+            }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    try {
+                        sh 'npm install'
+                    } catch (err) {
+                        echo "Failed to run npm install: ${err}"
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                script {
+                    try {
+                        sh '''
+                            echo "Would run tests here"
+                            echo "Test environment: Development"
+                            echo "Time: $(date)"
+                        '''
+                    } catch (err) {
+                        echo "Failed to run tests: ${err}"
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+            deleteDir() /* Clean workspace */
+        }
+        failure {
+            echo 'Pipeline failed!'
+            deleteDir() /* Clean workspace */
+        }
+        always {
+            echo 'Pipeline finished - cleaning up...'
+        }
+    }
+} 
