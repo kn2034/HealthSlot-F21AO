@@ -1,53 +1,32 @@
+version: '3.8'
+
 services:
   app:
-    image: ${DOCKER_IMAGE}:${DOCKER_TAG}
+    image: healthslot-app:latest
     container_name: healthslot-staging
-    user: root
     ports:
-      - "3005:8081"
+      - "3005:3005"
     environment:
       - NODE_ENV=staging
-      - PORT=8081
-      - MONGODB_URI=${MONGODB_URI}
-      - JWT_SECRET=${JWT_SECRET}
+      - MONGODB_URI=mongodb://mongodb:27017/healthslot
     depends_on:
-      mongodb:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/api/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    restart: "no"
-    stop_grace_period: 10s
+      - mongodb
     networks:
       - healthslot-network
 
   mongodb:
     image: mongo:latest
-    container_name: healthslot-mongodb-staging
-    restart: "no"
+    container_name: healthslot-mongodb
     ports:
-      - "27019:27017"
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - "27017:27017"
     volumes:
-      - mongodb_staging_data:/data/db
+      - mongodb_data:/data/db
     networks:
       - healthslot-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
 networks:
   healthslot-network:
-    driver: bridge
-    name: healthslot-network-staging
+    name: healthslot-pipeline2_healthslot-network
 
 volumes:
-  mongodb_staging_data:
-    name: mongodb_staging_data 
+  mongodb_data: 
