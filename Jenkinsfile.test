@@ -1,16 +1,43 @@
+#!/usr/bin/env groovy
+
+// Test pipeline for HealthSlot project
 pipeline {
-    agent any
+    agent {
+        label 'built-in'
+    }
+    
+    options {
+        skipDefaultCheckout(false)
+        disableConcurrentBuilds()
+    }
     
     environment {
         NODE_VERSION = 'v16'
     }
     
     stages {
-        stage('Environment Info') {
+        stage('Verify Pipeline') {
             steps {
                 script {
-                    sh 'echo "Current branch: ${env.BRANCH_NAME}"'
-                    sh 'ls -la'
+                    echo 'Verifying pipeline configuration...'
+                    echo "Running from file: Jenkinsfile.test"
+                    echo "Current workspace: ${WORKSPACE}"
+                }
+            }
+        }
+        
+        stage('Verify Environment') {
+            steps {
+                script {
+                    echo 'Checking build environment...'
+                    sh '''
+                        echo "Workspace directory:"
+                        pwd
+                        echo "System information:"
+                        uname -a
+                        echo "Current user:"
+                        whoami
+                    '''
                 }
             }
         }
@@ -40,6 +67,7 @@ pipeline {
                     try {
                         sh 'npm install'
                     } catch (err) {
+                        echo "Error installing dependencies: ${err}"
                         unstable('Failed to install dependencies')
                         error 'Failed to install dependencies'
                     }
@@ -53,6 +81,7 @@ pipeline {
                     try {
                         sh 'npm test'
                     } catch (err) {
+                        echo "Error running tests: ${err}"
                         unstable('Tests failed')
                         error 'Tests failed'
                     }
@@ -64,10 +93,12 @@ pipeline {
     post {
         always {
             script {
+                echo 'Cleaning workspace...'
                 cleanWs(
                     cleanWhenSuccess: true,
                     cleanWhenFailure: true,
-                    cleanWhenUnstable: true
+                    cleanWhenUnstable: true,
+                    deleteDirs: true
                 )
             }
         }
