@@ -21,6 +21,8 @@ pipeline {
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIALS = credentials('dockerhub-credentials')
         KUBECONFIG_CREDENTIALS = credentials('kubeconfig-credentials')
+        JIRA_SITE = 'healthslot-jira'
+        JIRA_CREDENTIALS = credentials('jira-credentials')
     }
     
     stages {
@@ -168,8 +170,13 @@ pipeline {
             echo 'Pipeline completed successfully!'
             script {
                 try {
-                    jiraComment body: "Build #${env.BUILD_NUMBER} completed successfully",
-                              issueKey: 'AO-1'
+                    withEnv(['JIRA_SITE=healthslot-jira']) {
+                        jiraComment body: """Build #${env.BUILD_NUMBER} completed successfully
+                            Build URL: ${env.BUILD_URL}
+                            Branch: ${env.GIT_BRANCH}
+                            Commit: ${env.GIT_COMMIT}""",
+                            issueKey: 'AO-1'
+                    }
                 } catch (err) {
                     echo "Failed to update JIRA: ${err.message}"
                 }
@@ -179,8 +186,14 @@ pipeline {
             echo 'Pipeline failed! Check logs for details.'
             script {
                 try {
-                    jiraComment body: "Build #${env.BUILD_NUMBER} failed. Please check Jenkins logs for details.",
-                              issueKey: 'AO-1'
+                    withEnv(['JIRA_SITE=healthslot-jira']) {
+                        jiraComment body: """Build #${env.BUILD_NUMBER} failed
+                            Build URL: ${env.BUILD_URL}
+                            Branch: ${env.GIT_BRANCH}
+                            Commit: ${env.GIT_COMMIT}
+                            Please check Jenkins logs for details.""",
+                            issueKey: 'AO-1'
+                    }
                 } catch (err) {
                     echo "Failed to update JIRA: ${err.message}"
                 }
