@@ -23,6 +23,7 @@ pipeline {
         KUBECONFIG_CREDENTIALS = credentials('kubeconfig-credentials')
         JIRA_SITE = 'healthslot-jira'
         JIRA_CREDENTIALS = credentials('jira-credentials')
+        PATH = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env.PATH}"
     }
     
     stages {
@@ -32,6 +33,8 @@ pipeline {
                     echo "Verifying pipeline configuration..."
                     echo "Running from file: Jenkinsfile.test"
                     echo "Current workspace: ${env.WORKSPACE}"
+                    sh 'which docker'
+                    sh 'docker --version'
                 }
             }
         }
