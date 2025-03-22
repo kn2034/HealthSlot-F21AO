@@ -15,7 +15,7 @@ pipeline {
     }
     
     environment {
-        NODE_VERSION = 'v16'
+        NODE_VERSION = '16'
         DOCKER_HUB_USERNAME = 'kirananarayanak'
         DOCKER_IMAGE = "${DOCKER_HUB_USERNAME}/healthslot"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
@@ -47,6 +47,10 @@ pipeline {
                         echo "Git info:"
                         git branch --show-current || true
                         git rev-parse HEAD || true
+                        
+                        # Check Homebrew
+                        echo "Homebrew version:"
+                        brew --version || true
                     '''
                 }
             }
@@ -61,13 +65,24 @@ pipeline {
             steps {
                 echo "Setting up Node.js..."
                 sh '''
-                    # Use nvm to install and use Node.js v16
-                    export NVM_DIR="$HOME/.nvm"
-                    [ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"
-                    nvm install 16
-                    nvm use 16
+                    # Check if Node.js 16 is installed
+                    if ! brew list node@16 &>/dev/null; then
+                        echo "Installing Node.js 16..."
+                        brew install node@16
+                        brew link --overwrite node@16
+                    else
+                        echo "Node.js 16 is already installed"
+                        brew link --overwrite node@16
+                    fi
+                    
+                    # Verify installation
+                    echo "Node.js version:"
                     node --version
+                    echo "NPM version:"
                     npm --version
+                    
+                    # Update npm to latest compatible version
+                    npm install -g npm@8
                 '''
             }
         }
@@ -80,6 +95,9 @@ pipeline {
             }
             steps {
                 sh '''
+                    # Clean install
+                    rm -rf node_modules package-lock.json
+                    
                     # Install all dependencies including dev dependencies
                     npm install
                     
