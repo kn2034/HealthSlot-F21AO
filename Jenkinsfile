@@ -4,7 +4,8 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_IMAGE = 'healthslot'
+        DOCKER_HUB_USERNAME = 'kirananarayanak'
+        DOCKER_IMAGE = "${DOCKER_HUB_USERNAME}/healthslot"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIALS = 'docker-hub-credentials'
         KUBECONFIG_CREDENTIALS = 'kubeconfig-credentials'
@@ -65,8 +66,16 @@ pipeline {
                 branch 'staging'
             }
             steps {
-                withKubeConfig([credentialsId: KUBECONFIG_CREDENTIALS]) {
+                withKubeConfig([
+                    credentialsId: KUBECONFIG_CREDENTIALS,
+                    serverUrl: 'https://127.0.0.1:60824',
+                    contextName: 'minikube'
+                ]) {
                     sh """
+                        # Verify kubectl configuration
+                        kubectl config current-context
+                        kubectl cluster-info
+                        
                         # Apply configurations in order
                         kubectl apply -f k8s/namespaces.yaml
                         kubectl apply -f k8s/configmap.yaml
@@ -94,8 +103,16 @@ pipeline {
                 timeout(time: 1, unit: 'HOURS') {
                     input message: 'Approve deployment to production?'
                 }
-                withKubeConfig([credentialsId: KUBECONFIG_CREDENTIALS]) {
+                withKubeConfig([
+                    credentialsId: KUBECONFIG_CREDENTIALS,
+                    serverUrl: 'https://127.0.0.1:60824',
+                    contextName: 'minikube'
+                ]) {
                     sh """
+                        # Verify kubectl configuration
+                        kubectl config current-context
+                        kubectl cluster-info
+                        
                         # Apply configurations in order
                         kubectl apply -f k8s/namespaces.yaml
                         kubectl apply -f k8s/production/configmap.yaml

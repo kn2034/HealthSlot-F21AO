@@ -232,9 +232,14 @@ EOL
                 }
             }
             steps {
-                withKubeConfig([credentialsId: KUBECONFIG_CREDENTIALS]) {
+                withKubeConfig([
+                    credentialsId: KUBECONFIG_CREDENTIALS,
+                    serverUrl: 'https://127.0.0.1:60824',
+                    contextName: 'minikube'
+                ]) {
                     sh """
-                        # Verify kubectl can connect
+                        # Verify kubectl configuration
+                        kubectl config current-context
                         kubectl cluster-info
                         
                         # Apply configurations in order with error checking
