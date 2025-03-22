@@ -115,15 +115,31 @@ pipeline {
                         supertest@6.3.4 \
                         @types/jest@29.5.12
                     
-                    # Create Jest config
-                    echo '{
-                      "testTimeout": 30000,
-                      "testEnvironment": "node",
-                      "setupFilesAfterEnv": ["./jest.setup.js"]
-                    }' > jest.config.js
+                    # Create Jest config file
+                    cat > jest.config.js << 'EOL'
+module.exports = {
+  testTimeout: 30000,
+  testEnvironment: "node",
+  setupFilesAfterEnv: ["./jest.setup.js"],
+  verbose: true,
+  detectOpenHandles: true,
+  forceExit: true
+};
+EOL
                     
                     # Create Jest setup file
-                    echo 'jest.setTimeout(30000);' > jest.setup.js
+                    cat > jest.setup.js << 'EOL'
+jest.setTimeout(30000);
+
+// Add global test setup
+beforeAll(() => {
+  console.log('Global test setup - starting');
+});
+
+afterAll(() => {
+  console.log('Global test cleanup - finishing');
+});
+EOL
                     
                     # List installed packages
                     echo "Installed packages:"
@@ -156,7 +172,7 @@ pipeline {
                     echo "MongoDB Memory Server Version: $MONGOMS_VERSION"
                     
                     # Run tests with detailed output
-                    npm test -- --detectOpenHandles --forceExit --verbose --runInBand
+                    npm test -- --runInBand
                 '''
             }
         }
