@@ -29,9 +29,9 @@ pipeline {
         stage('Verify Pipeline') {
             steps {
                 script {
-                    echo 'Verifying pipeline configuration...'
+                    echo "Verifying pipeline configuration..."
                     echo "Running from file: Jenkinsfile.test"
-                    echo "Current workspace: ${WORKSPACE}"
+                    echo "Current workspace: ${env.WORKSPACE}"
                 }
             }
         }
@@ -39,7 +39,7 @@ pipeline {
         stage('Verify Environment') {
             steps {
                 script {
-                    echo 'Checking build environment...'
+                    echo "Checking build environment..."
                     sh '''
                         echo "Workspace directory:"
                         pwd
@@ -55,23 +55,7 @@ pipeline {
         stage('Setup Node.js') {
             steps {
                 script {
-                    try {
-                        sh 'node --version'
-                    } catch (err) {
-                        echo 'Node.js not found, installing...'
-                        sh '''
-                            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-                            export NVM_DIR="$HOME/.nvm"
-                            if [ -f "$NVM_DIR/nvm.sh" ]; then
-                                . "$NVM_DIR/nvm.sh"
-                                nvm install ${NODE_VERSION}
-                                nvm use ${NODE_VERSION}
-                            else
-                                echo "NVM installation failed"
-                                exit 1
-                            fi
-                        '''
-                    }
+                    sh 'node --version'
                 }
             }
         }
@@ -79,67 +63,68 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    try {
-                        sh '''
-                            # Install all dependencies including dev dependencies
-                            npm install
-                            
-                            # Explicitly install mongodb-memory-server if not present
-                            if ! npm list mongodb-memory-server >/dev/null 2>&1; then
-                                echo "Installing mongodb-memory-server..."
-                                npm install --save-dev mongodb-memory-server@latest
-                            fi
-                            
-                            # Verify mongodb-memory-server installation
-                            npm list mongodb-memory-server
-                        '''
-                    } catch (err) {
-                        echo "Error installing dependencies: ${err}"
-                        unstable('Failed to install dependencies')
-                        error 'Failed to install dependencies'
-                    }
+                    sh '''
+                        npm install
+                        npm list mongodb-memory-server
+                        echo "Installing mongodb-memory-server..."
+                        npm install --save-dev mongodb-memory-server@latest
+                        npm list mongodb-memory-server
+                    '''
                 }
             }
         }
         
         stage('Run Tests') {
+            when {
+                anyOf {
+                    branch 'development'
+                    branch 'qa'
+                }
+            }
             steps {
                 script {
-                    try {
-                        sh '''
-                            # Set NODE_ENV to test
-                            export NODE_ENV=test
-                            
-                            # Run tests with increased memory limit and timeout
-                            NODE_OPTIONS="--max-old-space-size=4096" npm test -- --detectOpenHandles --forceExit
-                        '''
-                    } catch (err) {
-                        echo "Error running tests: ${err}"
-                        unstable('Tests failed')
-                        error 'Tests failed'
-                    }
+                    sh '''
+                        export NODE_ENV=test
+                        NODE_OPTIONS=--max-old-space-size=4096 npm test -- --detectOpenHandles --forceExit
+                    '''
                 }
             }
         }
         
         stage('Build Docker Image') {
+            when {
+                anyOf {
+                    branch 'development'
+                    branch 'qa'
+                    branch 'main'
+                }
+            }
             steps {
                 script {
+                    def branchTag = env.BRANCH_NAME == 'main' ? 'latest' : env.BRANCH_NAME
                     sh """
-                        docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
-                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                        docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG}-${branchTag} .
+                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG}-${branchTag} ${DOCKER_IMAGE}:${branchTag}
                     """
                 }
             }
         }
         
         stage('Push Docker Image') {
+            when {
+                anyOf {
+                    branch 'development'
+                    branch 'qa'
+                    branch 'main'
+                }
+            }
             steps {
                 script {
+                    def branchTag = env.BRANCH_NAME == 'main' ? 'latest' : env.BRANCH_NAME
                     sh """
-                        echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_CREDENTIALS_USR} --password-stdin
-                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                        docker push ${DOCKER_IMAGE}:latest
+                        echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
+                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}-${branchTag}
+                        docker push ${DOCKER_IMAGE}:${branchTag}
                         docker logout
                     """
                 }
@@ -147,6 +132,9 @@ pipeline {
         }
         
         stage('Deploy to Staging') {
+            when {
+                branch 'qa'
+            }
             steps {
                 script {
                     withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBECONFIG')]) {
@@ -155,6 +143,24 @@ pipeline {
                             kubectl apply -f k8s/staging-deployment.yaml
                             kubectl rollout status deployment/healthslot -n staging
                             kubectl get pods,svc -n staging
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBECONFIG')]) {
+                        sh '''
+                            kubectl apply -f k8s/namespaces.yaml
+                            kubectl apply -f k8s/production-deployment.yaml
+                            kubectl rollout status deployment/healthslot -n production
+                            kubectl get pods,svc -n production
                         '''
                     }
                 }
@@ -173,8 +179,8 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
                         withEnv(['JIRA_SITE=healthslot-jira']) {
                             jiraComment body: """Build #${env.BUILD_NUMBER} completed successfully
+                                Branch: ${env.BRANCH_NAME}
                                 Build URL: ${env.BUILD_URL}
-                                Branch: ${env.GIT_BRANCH}
                                 Commit: ${env.GIT_COMMIT}""",
                                 issueKey: 'AO-1',
                                 site: 'healthslot-jira'
@@ -192,8 +198,8 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
                         withEnv(['JIRA_SITE=healthslot-jira']) {
                             jiraComment body: """Build #${env.BUILD_NUMBER} failed
+                                Branch: ${env.BRANCH_NAME}
                                 Build URL: ${env.BUILD_URL}
-                                Branch: ${env.GIT_BRANCH}
                                 Commit: ${env.GIT_COMMIT}
                                 Please check Jenkins logs for details.""",
                                 issueKey: 'AO-1',
