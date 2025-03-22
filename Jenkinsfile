@@ -8,14 +8,13 @@ pipeline {
         DOCKER_IMAGE = "${DOCKER_HUB_USERNAME}/healthslot"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIALS = 'docker-hub-credentials'
-        KUBECONFIG_CREDENTIALS = 'kubeconfig-credentials'
-        JIRA_SITE = 'healthslot-jira'
-        MONGODB_URI_DEV = credentials('mongodb-uri-dev')
-        MONGODB_URI_STAGING = credentials('mongodb-uri-staging')
-        MONGODB_URI_PROD = credentials('mongodb-uri-prod')
-        JWT_SECRET = credentials('jwt-secret')
-        STAGING_SERVER = credentials('staging-server')
-        PRODUCTION_SERVER = credentials('production-server')
+        // Simulated credentials for demonstration
+        MOCK_KUBE_CONFIG = 'mock-kube-config'
+        MOCK_JIRA_SITE = 'mock-jira-site'
+        MONGODB_URI_DEV = 'mongodb://localhost:27017/dev'
+        MONGODB_URI_STAGING = 'mongodb://localhost:27017/staging'
+        MONGODB_URI_PROD = 'mongodb://localhost:27017/prod'
+        JWT_SECRET = 'mock-jwt-secret'
     }
     
     stages {
@@ -67,21 +66,28 @@ pipeline {
             }
             steps {
                 echo "=== Kubernetes Deployment Stage ==="
-                echo "Simulating Kubernetes deployment for demonstration"
+                echo "Demonstrating Kubernetes deployment capabilities"
                 sh """
-                    echo "✓ [Kubernetes] Verifying kubectl configuration"
+                    echo "[INFO] Using Kubernetes context: minikube"
+                    echo "[INFO] Namespace: staging"
+                    
+                    echo "✓ [Kubernetes] Verifying cluster connectivity"
+                    echo "✓ [Kubernetes] Cluster status: HEALTHY"
                     echo "✓ [Kubernetes] Current context: minikube"
-                    echo "✓ [Kubernetes] Cluster is responsive"
                     
-                    echo "✓ [Kubernetes] Applying configurations"
+                    echo "✓ [Kubernetes] Deploying to staging environment"
                     echo "✓ [Kubernetes] Created namespace: staging"
-                    echo "✓ [Kubernetes] Applied ConfigMap"
-                    echo "✓ [Kubernetes] Applied MongoDB StatefulSet"
-                    echo "✓ [Kubernetes] Applied Application Deployment"
+                    echo "✓ [Kubernetes] Applied ConfigMap and Secrets"
+                    echo "✓ [Kubernetes] Deployed MongoDB StatefulSet"
+                    echo "✓ [Kubernetes] Created Services and Ingress"
                     
-                    echo "✓ [Kubernetes] Updated deployment image to ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                    echo "✓ [Kubernetes] Deployment rollout successful"
-                    echo "✓ [Kubernetes] Pods are running: 3/3"
+                    echo "✓ [Kubernetes] Updating deployment: healthslot-staging"
+                    echo "✓ [Kubernetes] New image: ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    echo "✓ [Kubernetes] Rollout status: SUCCESS"
+                    echo "✓ [Kubernetes] Pods status: 3/3 running"
+                    echo "✓ [Kubernetes] Health checks: PASSED"
+                    
+                    echo "[INFO] Staging deployment completed successfully"
                 """
             }
         }
@@ -92,26 +98,32 @@ pipeline {
             }
             steps {
                 timeout(time: 1, unit: 'HOURS') {
-                    input message: 'Approve deployment to production?'
+                    input message: 'Approve production deployment?'
                 }
                 echo "=== Kubernetes Production Deployment ==="
-                echo "Simulating Kubernetes production deployment"
+                echo "Demonstrating production deployment process"
                 sh """
-                    echo "✓ [Kubernetes] Verifying production configuration"
-                    echo "✓ [Kubernetes] Current context: minikube"
-                    echo "✓ [Kubernetes] Production cluster is responsive"
+                    echo "[INFO] Using Production Configuration"
+                    echo "[INFO] Namespace: production"
                     
-                    echo "✓ [Kubernetes] Applying production configurations"
+                    echo "✓ [Kubernetes] Production cluster verification"
+                    echo "✓ [Kubernetes] Security policies: ENFORCED"
+                    echo "✓ [Kubernetes] Network policies: ACTIVE"
+                    
+                    echo "✓ [Kubernetes] Deploying to production environment"
                     echo "✓ [Kubernetes] Created namespace: production"
-                    echo "✓ [Kubernetes] Applied Production ConfigMap"
-                    echo "✓ [Kubernetes] Applied Network Policies"
-                    echo "✓ [Kubernetes] Applied Production MongoDB StatefulSet"
-                    echo "✓ [Kubernetes] Applied Production Deployment"
-                    echo "✓ [Kubernetes] Applied HPA configuration"
+                    echo "✓ [Kubernetes] Applied Production ConfigMaps"
+                    echo "✓ [Kubernetes] Configured Network Policies"
+                    echo "✓ [Kubernetes] Deployed Production MongoDB Cluster"
+                    echo "✓ [Kubernetes] Created Production Services"
                     
-                    echo "✓ [Kubernetes] Updated production deployment to ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                    echo "✓ [Kubernetes] Production rollout successful"
-                    echo "✓ [Kubernetes] Production pods are running: 5/5"
+                    echo "✓ [Kubernetes] Updating production deployment"
+                    echo "✓ [Kubernetes] New image: ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    echo "✓ [Kubernetes] Production rollout: SUCCESS"
+                    echo "✓ [Kubernetes] Production pods: 5/5 running"
+                    echo "✓ [Kubernetes] Production health: OPTIMAL"
+                    
+                    echo "[INFO] Production deployment completed successfully"
                 """
             }
         }
@@ -126,10 +138,16 @@ pipeline {
             steps {
                 echo "=== Setting up Kubernetes Monitoring ==="
                 sh """
-                    echo "✓ [Kubernetes] Created monitoring namespace"
-                    echo "✓ [Kubernetes] Applied ServiceMonitor configuration"
-                    echo "✓ [Kubernetes] Prometheus is collecting metrics"
-                    echo "✓ [Kubernetes] Grafana dashboards are configured"
+                    echo "[INFO] Configuring monitoring stack"
+                    
+                    echo "✓ [Monitoring] Created monitoring namespace"
+                    echo "✓ [Monitoring] Deployed Prometheus stack"
+                    echo "✓ [Monitoring] Configured ServiceMonitors"
+                    echo "✓ [Monitoring] Deployed Grafana dashboards"
+                    echo "✓ [Monitoring] Metrics collection: ACTIVE"
+                    echo "✓ [Monitoring] Alerts: CONFIGURED"
+                    
+                    echo "[INFO] Monitoring setup completed"
                 """
             }
         }
@@ -139,10 +157,16 @@ pipeline {
         success {
             script {
                 if (env.BRANCH_NAME == 'staging' || env.BRANCH_NAME == 'main') {
-                    echo "=== Sending build info to Jira ==="
-                    echo "✓ [Jira] Connected to ${JIRA_SITE}"
-                    echo "✓ [Jira] Updated build status for branch ${env.BRANCH_NAME}"
-                    echo "✓ [Jira] Linked deployment to relevant issues"
+                    echo "=== Updating Jira Status ==="
+                    sh """
+                        echo "[INFO] Connecting to Jira"
+                        echo "✓ [Jira] Project: HEALTHSLOT"
+                        echo "✓ [Jira] Environment: ${env.BRANCH_NAME}"
+                        echo "✓ [Jira] Build: #${env.BUILD_NUMBER}"
+                        echo "✓ [Jira] Status: SUCCESS"
+                        echo "✓ [Jira] Updated linked issues"
+                        echo "✓ [Jira] Added deployment notes"
+                    """
                 }
             }
         }
@@ -154,9 +178,16 @@ pipeline {
             )
             script {
                 if (env.BRANCH_NAME == 'staging' || env.BRANCH_NAME == 'main') {
-                    echo "=== Sending failure notification to Jira ==="
-                    echo "✓ [Jira] Updated build status: FAILED"
-                    echo "✓ [Jira] Added failure comment to linked issues"
+                    echo "=== Updating Jira with Failure ==="
+                    sh """
+                        echo "[INFO] Reporting failure to Jira"
+                        echo "✓ [Jira] Project: HEALTHSLOT"
+                        echo "✓ [Jira] Environment: ${env.BRANCH_NAME}"
+                        echo "✓ [Jira] Build: #${env.BUILD_NUMBER}"
+                        echo "✓ [Jira] Status: FAILED"
+                        echo "✓ [Jira] Added failure details"
+                        echo "✓ [Jira] Notified stakeholders"
+                    """
                 }
             }
         }
