@@ -1,0 +1,26 @@
+name: SonarCloud Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  sonarcloud:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      - name: SonarCloud Scan
+        uses: sonarsource/sonarcloud-github-action@master
+        env:
+          SONAR_TOKEN: d624dcd80b3b336be861e6fa178fae95a2d46b80
+        with:
+          args: >
+            -Dsonar.projectKey=kn2034_HealthSlot-F21AO
+            -Dsonar.organization=kn2034

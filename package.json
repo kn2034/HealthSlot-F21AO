@@ -1,0 +1,20 @@
+{
+  "name": "healthslot-f21ao",
+  "version": "1.0.0",
+  "description": "A collaborative project for the F21AO HealthSlot team, focusing on developing a robust health management system.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"No tests to run.\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourUsername/healthslot-f21ao.git"
+  },
+  "author": "Kiran Narayana",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yourUsername/healthslot-f21ao/issues"
+  },
+  "homepage": "https://github.com/yourUsername/healthslot-f21ao#readme",
+  "devDependencies": {}
+}
