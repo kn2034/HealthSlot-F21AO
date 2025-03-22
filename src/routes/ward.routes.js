@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createWard } = require('../controllers/ward.controller');
+const { createWard, getWards } = require('../controllers/ward.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
 
 /**
@@ -54,5 +54,25 @@ const { protect, authorize } = require('../middleware/auth.middleware');
  *         description: Server error
  */
 router.post('/', protect, authorize('admin'), createWard);
+
+/**
+ * @swagger
+ * /api/wards:
+ *   get:
+ *     tags:
+ *       - Wards
+ *     summary: Get all wards
+ *     description: Retrieve a list of all hospital wards
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of wards retrieved successfully
+ *       401:
+ *         description: Not authorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/', protect, getWards);
 
 module.exports = router; 

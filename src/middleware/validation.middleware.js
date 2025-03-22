@@ -21,7 +21,7 @@ const validateRegistration = (req, res, next) => {
   }
 
   // Role validation
-  const validRoles = ['doctor', 'nurse', 'paramedic', 'clerk'];
+  const validRoles = ['admin', 'doctor', 'nurse', 'receptionist', 'lab_technician'];
   if (!validRoles.includes(role)) {
     return res.status(400).json({ message: 'Invalid role' });
   }

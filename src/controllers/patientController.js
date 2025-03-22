@@ -1,5 +1,7 @@
 const Patient = require('../models/Patient');
-const { validateOPDRegistration } = require('../validation/patientValidation');
+const { validateOPDRegistration, validateAERegistration } = require('../validation/patientValidation');
+const { createAuditLog } = require('../utils/auditLog');
+const { determinePatientSeverity } = require('../utils/severityCalculator');
 
 const registerOPDPatient = async (req, res) => {
   try {
@@ -35,28 +37,36 @@ const registerOPDPatient = async (req, res) => {
     await patient.save();
 
     // Create audit log
-    const auditLog = {
-      action: 'REGISTER',
-      resourceType: 'Patient',
-      resourceId: patient._id,
-      changes: {
-        registrationType: 'OPD',
-        patientId: patient.patientId
-      }
-    };
+    try {
+      const auditLog = {
+        action: 'REGISTER',
+        resourceType: 'Patient',
+        resourceId: patient._id,
+        patientId: patient._id,
+        changes: {
+          registrationType: 'OPD',
+          patientId: patient._id
+        },
+        performedBy: {
+          userId: req.user ? req.user._id : '000000000000000000000000', // 24-character hex string for system user
+          userRole: req.user ? req.user.role : 'SYSTEM'
+        }
+      };
 
-    const savedLog = await createAuditLog(auditLog);
+      await createAuditLog(auditLog);
+    } catch (auditError) {
+      console.error('Audit log creation failed:', auditError);
+      // Continue with the response even if audit log fails
+    }
 
     res.status(201).json({
       success: true,
       message: 'Patient registered successfully for OPD',
       data: {
-        patientId: patient.patientId,
-        mongoId: patient._id,
+        patientId: patient._id,
         name: `${patient.personalInfo.firstName} ${patient.personalInfo.lastName}`,
         registrationType: patient.registrationType,
-        registrationDate: patient.createdAt,
-        auditLogCreated: !!savedLog
+        registrationDate: patient.createdAt
       }
     });
 
@@ -76,6 +86,7 @@ const registerOPDPatient = async (req, res) => {
     });
   }
 };
+
 const registerAEPatient = async (req, res) => {
   try {
     // Validate request data
@@ -88,6 +99,18 @@ const registerAEPatient = async (req, res) => {
       });
     }
 
+    // Check for existing patient
+    const existingPatient = await Patient.findOne({
+      'contactInfo.phone': req.body.contactInfo.phone
+    });
+
+    if (existingPatient) {
+      return res.status(400).json({
+        success: false,
+        message: 'Patient with this phone number already exists'
+      });
+    }
+
     // Determine severity based on emergency details
     const severity = determinePatientSeverity(req.body.emergencyDetails);
 
@@ -97,7 +120,7 @@ const registerAEPatient = async (req, res) => {
       registrationType: 'A&E',
       emergencyDetails: {
         ...req.body.emergencyDetails,
-        severity // Add the determined severity
+        severity
       }
     };
 
@@ -105,30 +128,38 @@ const registerAEPatient = async (req, res) => {
     await patient.save();
 
     // Create audit log
-    const auditLog = {
-      action: 'REGISTER',
-      resourceType: 'Patient',
-      resourceId: patient._id,
-      changes: {
-        registrationType: 'AE',
-        patientId: patient.patientId,
-        severity: emergencyDetails.severity
-      }
-    };
+    try {
+      const auditLog = {
+        action: 'REGISTER',
+        resourceType: 'Patient',
+        resourceId: patient._id,
+        patientId: patient._id,
+        changes: {
+          registrationType: 'A&E',
+          patientId: patient._id,
+          severity
+        },
+        performedBy: {
+          userId: req.user ? req.user._id : '000000000000000000000000', // 24-character hex string for system user
+          userRole: req.user ? req.user.role : 'SYSTEM'
+        }
+      };
 
-    const savedLog = await createAuditLog(auditLog);
+      await createAuditLog(auditLog);
+    } catch (auditError) {
+      console.error('Audit log creation failed:', auditError);
+      // Continue with the response even if audit log fails
+    }
 
     res.status(201).json({
       success: true,
       message: 'Patient registered successfully for A&E',
       data: {
-        patientId: patient.patientId,
-        mongoId: patient._id,
+        patientId: patient._id,
         name: `${patient.personalInfo.firstName} ${patient.personalInfo.lastName}`,
         registrationType: patient.registrationType,
-        severity: emergencyDetails.severity,
-        registrationDate: patient.createdAt,
-        auditLogCreated: !!savedLog
+        severity,
+        registrationDate: patient.createdAt
       }
     });
 

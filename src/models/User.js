@@ -29,13 +29,13 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'doctor', 'nurse', 'receptionist'],
+    enum: ['admin', 'doctor', 'nurse', 'receptionist', 'lab_technician'],
     required: [true, 'Role is required']
   },
   department: {
     type: String,
     required: [true, 'Department is required'],
-    enum: ['Medicine', 'Surgery', 'Pediatrics', 'Cardiology', 'Neurology', 'Orthopedics', 'Emergency', 'ICU', 'Administration', 'General']
+    enum: ['Medicine', 'Surgery', 'Pediatrics', 'Cardiology', 'Neurology', 'Orthopedics', 'Emergency', 'ICU', 'Administration', 'Laboratory', 'General']
   },
   createdAt: {
     type: Date,

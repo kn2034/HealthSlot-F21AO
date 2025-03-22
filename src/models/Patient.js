@@ -101,7 +101,7 @@ const patientSchema = new mongoose.Schema({
     },
     severity: {
       type: String,
-      enum: ['Critical', 'Moderate', 'Stable'],
+      enum: ['Critical', 'Serious', 'Moderate', 'Stable'],
       required: function() {
         return this.registrationType === 'A&E';
       }

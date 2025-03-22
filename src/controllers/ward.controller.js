@@ -45,6 +45,23 @@ const createWard = async (req, res) => {
   }
 };
 
+const getWards = async (req, res) => {
+  try {
+    const wards = await Ward.find({});
+    res.status(200).json({
+      success: true,
+      data: wards
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching wards',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
-  createWard
+  createWard,
+  getWards
 }; 

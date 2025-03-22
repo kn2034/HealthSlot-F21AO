@@ -1,31 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth.middleware');
-
-// Middleware function for handling test registration
-const registerTest = async (req, res) => {
-  try {
-    res.status(501).json({ message: 'Not implemented yet' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error registering test', error: error.message });
-  }
-};
-
-// Middleware function for getting test registrations
-const getTestRegistrations = async (req, res) => {
-  try {
-    res.status(501).json({ message: 'Not implemented yet' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error getting test registrations', error: error.message });
-  }
-};
+const {
+  registerTest,
+  getTestRegistrations
+} = require('../controllers/testRegistration.controller');
 
 /**
  * @swagger
  * /api/lab/test-registration:
  *   post:
+ *     tags:
+ *       - Lab Tests
  *     summary: Register a new lab test
- *     tags: [Lab Tests]
+ *     description: Register a new lab test for a patient (Doctors and Admin only)
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -40,25 +28,54 @@ const getTestRegistrations = async (req, res) => {
  *             properties:
  *               patientId:
  *                 type: string
+ *                 description: ID of the patient
  *               testType:
  *                 type: string
+ *                 enum: [Blood Test, Urine Test, X-Ray, CT Scan, MRI, ECG, EEG]
+ *               priority:
+ *                 type: string
+ *                 enum: [Routine, Urgent, Emergency]
+ *                 default: Routine
+ *               notes:
+ *                 type: string
+ *               scheduledDate:
+ *                 type: string
+ *                 format: date-time
  *     responses:
  *       201:
  *         description: Test registered successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Not authorized
+ *       403:
+ *         description: Forbidden - Doctors and Admin only
+ *       404:
+ *         description: Patient not found
+ *       500:
+ *         description: Server error
  */
-router.post('/test-registration', protect, authorize('admin', 'doctor', 'lab_technician'), registerTest);
+router.post('/test-registration', protect, authorize('admin', 'doctor'), registerTest);
 
 /**
  * @swagger
  * /api/lab/test-registrations:
  *   get:
+ *     tags:
+ *       - Lab Tests
  *     summary: Get all test registrations
- *     tags: [Lab Tests]
+ *     description: Retrieve all lab test registrations (Doctors, Lab Technicians and Admin only)
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of test registrations
+ *         description: List of test registrations retrieved successfully
+ *       401:
+ *         description: Not authorized
+ *       403:
+ *         description: Forbidden - Doctors, Lab Technicians and Admin only
+ *       500:
+ *         description: Server error
  */
 router.get('/test-registrations', protect, authorize('admin', 'doctor', 'lab_technician'), getTestRegistrations);
 
