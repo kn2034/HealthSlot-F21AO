@@ -15,7 +15,7 @@ pipeline {
     }
     
     environment {
-        NODE_VERSION = '16'
+        NODE_VERSION = '18'
         DOCKER_HUB_USERNAME = 'kirananarayanak'
         DOCKER_IMAGE = "${DOCKER_HUB_USERNAME}/healthslot"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
@@ -51,6 +51,9 @@ pipeline {
                         # Check Homebrew
                         echo "Homebrew version:"
                         brew --version || true
+                        
+                        # Update Homebrew
+                        brew update
                     '''
                 }
             }
@@ -65,15 +68,14 @@ pipeline {
             steps {
                 echo "Setting up Node.js..."
                 sh '''
-                    # Check if Node.js 16 is installed
-                    if ! brew list node@16 &>/dev/null; then
-                        echo "Installing Node.js 16..."
-                        brew install node@16
-                        brew link --overwrite node@16
-                    else
-                        echo "Node.js 16 is already installed"
-                        brew link --overwrite node@16
-                    fi
+                    # Install Node.js 18 LTS
+                    echo "Installing/Updating Node.js 18..."
+                    brew install node@18 || brew upgrade node@18 || true
+                    brew unlink node || true
+                    brew link --overwrite node@18
+                    
+                    # Add Homebrew's node path to PATH
+                    export PATH="/opt/homebrew/opt/node@18/bin:$PATH"
                     
                     # Verify installation
                     echo "Node.js version:"
@@ -82,7 +84,7 @@ pipeline {
                     npm --version
                     
                     # Update npm to latest compatible version
-                    npm install -g npm@8
+                    npm install -g npm@10
                 '''
             }
         }
@@ -95,6 +97,9 @@ pipeline {
             }
             steps {
                 sh '''
+                    # Add Homebrew's node path to PATH
+                    export PATH="/opt/homebrew/opt/node@18/bin:$PATH"
+                    
                     # Clean install
                     rm -rf node_modules package-lock.json
                     
@@ -119,6 +124,9 @@ pipeline {
             }
             steps {
                 sh '''
+                    # Add Homebrew's node path to PATH
+                    export PATH="/opt/homebrew/opt/node@18/bin:$PATH"
+                    
                     export NODE_ENV=test
                     export NODE_OPTIONS="--max-old-space-size=4096"
                     
