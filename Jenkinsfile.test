@@ -170,12 +170,15 @@ pipeline {
             echo 'Pipeline completed successfully!'
             script {
                 try {
-                    withEnv(['JIRA_SITE=healthslot-jira']) {
-                        jiraComment body: """Build #${env.BUILD_NUMBER} completed successfully
-                            Build URL: ${env.BUILD_URL}
-                            Branch: ${env.GIT_BRANCH}
-                            Commit: ${env.GIT_COMMIT}""",
-                            issueKey: 'AO-1'
+                    withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
+                        withEnv(['JIRA_SITE=healthslot-jira']) {
+                            jiraComment body: """Build #${env.BUILD_NUMBER} completed successfully
+                                Build URL: ${env.BUILD_URL}
+                                Branch: ${env.GIT_BRANCH}
+                                Commit: ${env.GIT_COMMIT}""",
+                                issueKey: 'AO-1',
+                                site: 'healthslot-jira'
+                        }
                     }
                 } catch (err) {
                     echo "Failed to update JIRA: ${err.message}"
@@ -186,13 +189,16 @@ pipeline {
             echo 'Pipeline failed! Check logs for details.'
             script {
                 try {
-                    withEnv(['JIRA_SITE=healthslot-jira']) {
-                        jiraComment body: """Build #${env.BUILD_NUMBER} failed
-                            Build URL: ${env.BUILD_URL}
-                            Branch: ${env.GIT_BRANCH}
-                            Commit: ${env.GIT_COMMIT}
-                            Please check Jenkins logs for details.""",
-                            issueKey: 'AO-1'
+                    withCredentials([usernamePassword(credentialsId: 'jira-credentials', usernameVariable: 'JIRA_USER', passwordVariable: 'JIRA_PASS')]) {
+                        withEnv(['JIRA_SITE=healthslot-jira']) {
+                            jiraComment body: """Build #${env.BUILD_NUMBER} failed
+                                Build URL: ${env.BUILD_URL}
+                                Branch: ${env.GIT_BRANCH}
+                                Commit: ${env.GIT_COMMIT}
+                                Please check Jenkins logs for details.""",
+                                issueKey: 'AO-1',
+                                site: 'healthslot-jira'
+                        }
                     }
                 } catch (err) {
                     echo "Failed to update JIRA: ${err.message}"
