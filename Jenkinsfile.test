@@ -26,6 +26,8 @@ pipeline {
         PATH = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:${env.PATH}"
         BRANCH_NAME = "${env.GIT_BRANCH?.replaceFirst('^origin/', '') ?: 'unknown'}"
         IS_HEALTHSLOT_PIPELINE = "${env.JOB_NAME?.contains('HealthSlot-Pipeline')}"
+        JEST_TIMEOUT = '30000'
+        MONGOMS_VERSION = '7.0.5'
     }
     
     stages {
@@ -106,8 +108,22 @@ pipeline {
                     # Install all dependencies including dev dependencies
                     npm install
                     
-                    # Explicitly install test dependencies
-                    npm install --save-dev mongodb-memory-server@8.15.1 jest supertest
+                    # Explicitly install test dependencies with specific versions
+                    npm install --save-dev \
+                        mongodb-memory-server@8.15.1 \
+                        jest@29.7.0 \
+                        supertest@6.3.4 \
+                        @types/jest@29.5.12
+                    
+                    # Create Jest config
+                    echo '{
+                      "testTimeout": 30000,
+                      "testEnvironment": "node",
+                      "setupFilesAfterEnv": ["./jest.setup.js"]
+                    }' > jest.config.js
+                    
+                    # Create Jest setup file
+                    echo 'jest.setTimeout(30000);' > jest.setup.js
                     
                     # List installed packages
                     echo "Installed packages:"
@@ -129,14 +145,18 @@ pipeline {
                     
                     export NODE_ENV=test
                     export NODE_OPTIONS="--max-old-space-size=4096"
+                    export MONGOMS_VERSION=7.0.5
+                    export MONGOMS_DEBUG=1
+                    export JEST_TIMEOUT=30000
                     
                     # Show test environment
                     echo "Node version: $(node --version)"
                     echo "NPM version: $(npm --version)"
                     echo "NODE_ENV: $NODE_ENV"
+                    echo "MongoDB Memory Server Version: $MONGOMS_VERSION"
                     
                     # Run tests with detailed output
-                    npm test -- --detectOpenHandles --forceExit --verbose
+                    npm test -- --detectOpenHandles --forceExit --verbose --runInBand
                 '''
             }
         }
