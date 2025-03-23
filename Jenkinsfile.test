@@ -352,8 +352,7 @@ EOL
                             --auto \
                             -l WARN \
                             -T 60 \
-                            --fail-if-high-risk-alert-threshold 5 \
-                            --fail-if-medium-risk-alert-threshold 10
+                            -z "-config alertthreshold.high=5 -config alertthreshold.medium=10"
                     """
                     
                     // Archive the reports

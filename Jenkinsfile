@@ -185,9 +185,9 @@ pipeline {
                             -J zap-baseline-report.json \
                             -I \
                             --auto \
-                            -l PASS \
-                            -c zap.conf \
-                            --fail-on-warn=false
+                            -l WARN \
+                            -T 60 \
+                            -z "-config alertthreshold.high=5 -config alertthreshold.medium=10"
                     """
                     
                     // Archive the reports
