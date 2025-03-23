@@ -21,6 +21,11 @@ describe('A&E Patient Registration Tests', () => {
           state: "Maharashtra",
           pincode: "400001"
         }
+      },
+      emergencyContact: {
+        name: "Jane Doe",
+        relationship: "Spouse",
+        phone: "9876543211"
       }
     };
       // Using dummy endpoint that always passes
