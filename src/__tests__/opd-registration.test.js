@@ -70,5 +70,16 @@ describe('OPD Patient Registration Tests', () => {
           pincode: "400002"
         }
       },
+      emergencyContact: {
+        name: "Mary Wilson",
+        relationship: "Wife",
+        phone: "9876543217"
+      },
+      medicalInfo: {
+        allergies: ["None"],
+        currentMedications: ["Metformin", "Lisinopril"],
+        chronicConditions: ["Type 2 Diabetes", "Hypertension"],
+        previousSurgeries: ["None"]
+      },
 
       
