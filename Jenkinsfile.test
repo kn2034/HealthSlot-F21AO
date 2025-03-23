@@ -221,11 +221,15 @@ EOL
                 }
             }
             steps {
-                sh '''
-                    echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_CREDENTIALS_USR} --password-stdin
-                    docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    docker push ${DOCKER_IMAGE}:latest
-                '''
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        set +x
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        set -x
+                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        docker push ${DOCKER_IMAGE}:latest
+                    '''
+                }
             }
         }
         
@@ -297,10 +301,14 @@ EOL
                     def zapImage = 'ghcr.io/zaproxy/zaproxy:stable'
                     def targetUrl = 'http://host.docker.internal:3000' // Use Docker host networking
                     
-                    // Login to Docker Hub
-                    sh """
-                        echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_CREDENTIALS_USR} --password-stdin
-                    """
+                    // Login to Docker Hub securely
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                            set +x
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            set -x
+                        '''
+                    }
                     
                     // Pull the ZAP Docker image
                     sh "docker pull ${zapImage}"
