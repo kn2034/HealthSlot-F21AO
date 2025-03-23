@@ -162,20 +162,45 @@ pipeline {
                     def issueKey = "AO-${env.BUILD_NUMBER}"
                     jiraSendBuildInfo site: "${JIRA_SITE}", branch: "${env.BRANCH_NAME}"
                     
-                    jiraNewIssue(
-                        site: "${JIRA_SITE}",
-                        project: 'AO',
-                        issuetype: 'Deployment',
-                        summary: "Deployment #${env.BUILD_NUMBER} to ${env.BRANCH_NAME}",
-                        description: """
-                            Build Number: ${env.BUILD_NUMBER}
-                            Branch: ${env.BRANCH_NAME}
-                            Status: SUCCESS
-                            Docker Image: ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            Build URL: ${env.BUILD_URL}
-                            Deployment Time: ${new Date().format("yyyy-MM-dd HH:mm:ss")}
-                        """
-                    )
+                    def deploymentIssue = [
+                        fields: [
+                            project: [key: 'AO'],
+                            issuetype: [name: 'Deployment'],
+                            summary: "Deployment #${env.BUILD_NUMBER} to ${env.BRANCH_NAME}",
+                            description: """
+                                Build Number: ${env.BUILD_NUMBER}
+                                Branch: ${env.BRANCH_NAME}
+                                Status: SUCCESS
+                                Docker Image: ${DOCKER_IMAGE}:${DOCKER_TAG}
+                                Build URL: ${env.BUILD_URL}
+                                Deployment Time: ${new Date().format("yyyy-MM-dd HH:mm:ss")}
+                            """
+                        ]
+                    ]
+                    
+                    def response = jiraNewIssue issue: deploymentIssue, site: "${JIRA_SITE}"
+                    
+                    jiraAddComment idOrKey: "AO-${env.BUILD_NUMBER}", comment: "✅ Deployment successful to ${env.BRANCH_NAME} environment", site: "${JIRA_SITE}"
+                    
+                    def failureIssue = [
+                        fields: [
+                            project: [key: 'AO'],
+                            issuetype: [name: 'Bug'],
+                            summary: "Deployment #${env.BUILD_NUMBER} failed",
+                            description: """
+                                Build Number: ${env.BUILD_NUMBER}
+                                Branch: ${env.BRANCH_NAME}
+                                Status: FAILED
+                                Failed Stage: ${env.STAGE_NAME}
+                                Error: ${currentBuild.description ?: 'Unknown error'}
+                                Build URL: ${env.BUILD_URL}
+                            """
+                        ]
+                    ]
+                    
+                    def bugResponse = jiraNewIssue issue: failureIssue, site: "${JIRA_SITE}"
+                    
+                    jiraAddComment idOrKey: bugResponse.data.key, comment: "Pipeline failure detected. DevOps team has been notified.", site: "${JIRA_SITE}"
                 }
             }
         }

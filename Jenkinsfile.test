@@ -268,22 +268,25 @@ EOL
         stage('Report Test Results') {
             steps {
                 script {
-                    def testIssue = jiraNewIssue(
-                        site: "${JIRA_SITE}",
-                        project: 'AO',
-                        issuetype: 'Test Execution',
-                        summary: "Test Run #${env.BUILD_NUMBER} - ${env.BRANCH_NAME}",
-                        description: """
-                            Test Cycle: ${JIRA_TEST_CYCLE}
-                            Build Number: ${env.BUILD_NUMBER}
-                            Branch: ${env.BRANCH_NAME}
-                            Status: IN PROGRESS
-                            Build URL: ${env.BUILD_URL}
-                        """
-                    )
+                    def testIssue = [
+                        fields: [
+                            project: [key: 'AO'],
+                            issuetype: [name: 'Test Execution'],
+                            summary: "Test Run #${env.BUILD_NUMBER} - ${env.BRANCH_NAME}",
+                            description: """
+                                Test Cycle: ${JIRA_TEST_CYCLE}
+                                Build Number: ${env.BUILD_NUMBER}
+                                Branch: ${env.BRANCH_NAME}
+                                Status: IN PROGRESS
+                                Build URL: ${env.BUILD_URL}
+                            """
+                        ]
+                    ]
+                    
+                    def response = jiraNewIssue issue: testIssue, site: "${JIRA_SITE}"
                     
                     // Store the issue key for later use
-                    env.TEST_ISSUE_KEY = testIssue.data.key
+                    env.TEST_ISSUE_KEY = response.data.key
                 }
             }
         }
@@ -292,28 +295,26 @@ EOL
     post {
         success {
             script {
-                jiraEditIssue(
-                    site: "${JIRA_SITE}",
-                    idOrKey: env.TEST_ISSUE_KEY,
-                    summary: "Test Run #${env.BUILD_NUMBER} - PASSED",
-                    description: """
-                        Test Cycle: ${JIRA_TEST_CYCLE}
-                        Build Number: ${env.BUILD_NUMBER}
-                        Branch: ${env.BRANCH_NAME}
-                        Status: PASSED
-                        Test Coverage: 85%
-                        Unit Tests: 45/45 passed
-                        Integration Tests: 12/12 passed
-                        API Tests: 28/28 passed
-                        Build URL: ${env.BUILD_URL}
-                    """
-                )
+                def updateIssue = [
+                    fields: [
+                        summary: "Test Run #${env.BUILD_NUMBER} - PASSED",
+                        description: """
+                            Test Cycle: ${JIRA_TEST_CYCLE}
+                            Build Number: ${env.BUILD_NUMBER}
+                            Branch: ${env.BRANCH_NAME}
+                            Status: PASSED
+                            Test Coverage: 85%
+                            Unit Tests: 45/45 passed
+                            Integration Tests: 12/12 passed
+                            API Tests: 28/28 passed
+                            Build URL: ${env.BUILD_URL}
+                        """
+                    ]
+                ]
                 
-                jiraAddComment(
-                    site: "${JIRA_SITE}",
-                    idOrKey: env.TEST_ISSUE_KEY,
-                    comment: "✅ All tests passed successfully"
-                )
+                jiraEditIssue issue: updateIssue, idOrKey: env.TEST_ISSUE_KEY, site: "${JIRA_SITE}"
+                
+                jiraAddComment idOrKey: env.TEST_ISSUE_KEY, comment: "✅ All tests passed successfully", site: "${JIRA_SITE}"
             }
         }
         failure {
@@ -328,26 +329,27 @@ EOL
                     Build URL: ${env.BUILD_URL}
                 """
                 
-                jiraEditIssue(
-                    site: "${JIRA_SITE}",
-                    idOrKey: env.TEST_ISSUE_KEY,
-                    summary: "Test Run #${env.BUILD_NUMBER} - FAILED",
-                    description: failureDescription
-                )
+                def updateIssue = [
+                    fields: [
+                        summary: "Test Run #${env.BUILD_NUMBER} - FAILED",
+                        description: failureDescription
+                    ]
+                ]
                 
-                def bugIssue = jiraNewIssue(
-                    site: "${JIRA_SITE}",
-                    project: 'AO',
-                    issuetype: 'Bug',
-                    summary: "Test Failures in Build #${env.BUILD_NUMBER}",
-                    description: failureDescription
-                )
+                jiraEditIssue issue: updateIssue, idOrKey: env.TEST_ISSUE_KEY, site: "${JIRA_SITE}"
                 
-                jiraAddComment(
-                    site: "${JIRA_SITE}",
-                    idOrKey: env.TEST_ISSUE_KEY,
-                    comment: "❌ Tests failed. Bug ticket created: ${bugIssue.data.key}"
-                )
+                def bugIssue = [
+                    fields: [
+                        project: [key: 'AO'],
+                        issuetype: [name: 'Bug'],
+                        summary: "Test Failures in Build #${env.BUILD_NUMBER}",
+                        description: failureDescription
+                    ]
+                ]
+                
+                def bugResponse = jiraNewIssue issue: bugIssue, site: "${JIRA_SITE}"
+                
+                jiraAddComment idOrKey: env.TEST_ISSUE_KEY, comment: "❌ Tests failed. Bug ticket created: ${bugResponse.data.key}", site: "${JIRA_SITE}"
             }
         }
         always {
