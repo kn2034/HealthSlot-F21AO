@@ -60,5 +60,15 @@ describe('OPD Patient Registration Tests', () => {
         bloodGroup: "B-",
         maritalStatus: "Married"
       },
+      contactInfo: {
+        email: "robert.wilson@email.com",
+        phone: "9876543216",
+        address: {
+          street: "456 Oak Lane",
+          city: "Mumbai",
+          state: "Maharashtra",
+          pincode: "400002"
+        }
+      },
 
       
