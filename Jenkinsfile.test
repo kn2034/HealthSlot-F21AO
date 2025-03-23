@@ -272,14 +272,16 @@ EOL
                         site: "${JIRA_SITE}",
                         project: 'AO',
                         issueType: 'Test Execution',
-                        summary: "Test Run #${env.BUILD_NUMBER} - ${env.BRANCH_NAME}",
-                        description: """
-                            Test Cycle: ${JIRA_TEST_CYCLE}
-                            Build Number: ${env.BUILD_NUMBER}
-                            Branch: ${env.BRANCH_NAME}
-                            Status: IN PROGRESS
-                            Build URL: ${env.BUILD_URL}
-                        """
+                        fields: [
+                            summary: "Test Run #${env.BUILD_NUMBER} - ${env.BRANCH_NAME}",
+                            description: """
+                                Test Cycle: ${JIRA_TEST_CYCLE}
+                                Build Number: ${env.BUILD_NUMBER}
+                                Branch: ${env.BRANCH_NAME}
+                                Status: IN PROGRESS
+                                Build URL: ${env.BUILD_URL}
+                            """
+                        ]
                     )
                     
                     // Store the issue key for later use
@@ -295,18 +297,20 @@ EOL
                 jiraEditIssue(
                     site: "${JIRA_SITE}",
                     idOrKey: env.TEST_ISSUE_KEY,
-                    summary: "Test Run #${env.BUILD_NUMBER} - PASSED",
-                    description: """
-                        Test Cycle: ${JIRA_TEST_CYCLE}
-                        Build Number: ${env.BUILD_NUMBER}
-                        Branch: ${env.BRANCH_NAME}
-                        Status: PASSED
-                        Test Coverage: 85%
-                        Unit Tests: 45/45 passed
-                        Integration Tests: 12/12 passed
-                        API Tests: 28/28 passed
-                        Build URL: ${env.BUILD_URL}
-                    """
+                    fields: [
+                        summary: "Test Run #${env.BUILD_NUMBER} - PASSED",
+                        description: """
+                            Test Cycle: ${JIRA_TEST_CYCLE}
+                            Build Number: ${env.BUILD_NUMBER}
+                            Branch: ${env.BRANCH_NAME}
+                            Status: PASSED
+                            Test Coverage: 85%
+                            Unit Tests: 45/45 passed
+                            Integration Tests: 12/12 passed
+                            API Tests: 28/28 passed
+                            Build URL: ${env.BUILD_URL}
+                        """
+                    ]
                 )
                 
                 jiraAddComment(
@@ -331,16 +335,20 @@ EOL
                 jiraEditIssue(
                     site: "${JIRA_SITE}",
                     idOrKey: env.TEST_ISSUE_KEY,
-                    summary: "Test Run #${env.BUILD_NUMBER} - FAILED",
-                    description: failureDescription
+                    fields: [
+                        summary: "Test Run #${env.BUILD_NUMBER} - FAILED",
+                        description: failureDescription
+                    ]
                 )
                 
                 def bugIssue = jiraNewIssue(
                     site: "${JIRA_SITE}",
                     project: 'AO',
                     issueType: 'Bug',
-                    summary: "Test Failures in Build #${env.BUILD_NUMBER}",
-                    description: failureDescription
+                    fields: [
+                        summary: "Test Failures in Build #${env.BUILD_NUMBER}",
+                        description: failureDescription
+                    ]
                 )
                 
                 jiraAddComment(
