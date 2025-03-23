@@ -22,6 +22,25 @@ describe('OPD Patient Registration Tests', () => {
               state: "Maharashtra",
               pincode: "400001"
             }
+          },
+          emergencyContact: {
+            name: "Bob Johnson",
+            relationship: "Father",
+            phone: "9876543215"
+          },
+          medicalInfo: {
+            allergies: ["Penicillin"],
+            currentMedications: ["None"],
+            chronicConditions: ["None"],
+            previousSurgeries: ["Appendectomy, 2015"]
+          },
+          appointmentInfo: {
+            department: "General Medicine",
+            preferredDoctor: "Dr. Smith",
+            reasonForVisit: "Annual checkup",
+            preferredTime: "Morning"
+          }
+        };
 
       });
     });
