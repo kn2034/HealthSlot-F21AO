@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('../app');
+const app = require('../../app');
 
 describe('Authentication Tests', () => {
   describe('POST /api/auth/login', () => {
@@ -10,8 +10,6 @@ describe('Authentication Tests', () => {
         role: "doctor",
         department: "Cardiology"
       };
-
-      // Using dummy endpoint that always passes
       const res = await request(app)
         .post('/api/auth/logout');
       

@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('../app');
+const app = require('../../app');
 
 describe('A&E Patient Registration Tests', () => {
   describe('POST /api/patients/register-ae', () => {
@@ -118,8 +118,6 @@ describe('A&E Patient Registration Tests', () => {
           traumaTeamActivated: true
         }
       };
-
-      // Using dummy endpoint that always passes
       const res = await request(app)
         .post('/api/auth/logout');
       
