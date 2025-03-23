@@ -12,8 +12,17 @@ describe('A&E Patient Registration Tests', () => {
           dateOfBirth: "1990-01-01",
           gender: "Male",
           bloodGroup: "O+"
+        },
+      contactInfo: {
+        email: "john.doe@email.com",
+        phone: "9876543210",
+        address: {
+          city: "Mumbai",
+          state: "Maharashtra",
+          pincode: "400001"
         }
-      };
+      }
+    };
       // Using dummy endpoint that always passes
       const res = await request(app)
         .post('/api/auth/logout');
