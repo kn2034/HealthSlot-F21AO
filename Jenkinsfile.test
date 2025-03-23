@@ -177,9 +177,13 @@ EOL
             }
             steps {
                 sh '''
-                    npm run test:jest -- --runInBand --verbose --ci
-                    JUNIT_REPORT_PATH=test-results/mocha-junit.xml npm run test:mocha -- --reporter mocha-junit-reporter
+                    npm run test:jest -- --runInBand --verbose --ci --reporters=default --reporters=jest-junit
                 '''
+            }
+            post {
+                always {
+                    junit '**/test-results/jest-junit.xml'
+                }
             }
         }
         
