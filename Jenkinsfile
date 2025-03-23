@@ -3,6 +3,16 @@ pipeline {
     // Monitored branches: main (production), develop (staging), qa (testing)
     agent any
     
+    triggers {
+        githubPush()
+        pollSCM('H/5 * * * *')  // Poll every 5 minutes as backup
+    }
+    
+    options {
+        skipDefaultCheckout(false)
+        disableConcurrentBuilds()
+    }
+    
     environment {
         DOCKER_HUB_USERNAME = 'kirananarayanak'
         DOCKER_IMAGE = "${DOCKER_HUB_USERNAME}/healthslot"
