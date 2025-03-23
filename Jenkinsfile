@@ -120,66 +120,142 @@ pipeline {
                 branch 'main'
             }
             steps {
-                echo "=== Running Production OWASP ZAP Security Scan ==="
-                sh """
-                    # Function to simulate progress with minimal delays
-                    simulate_progress() {
-                        local steps=(\$@)
-                        for step in "\${steps[@]}"; do
-                            sleep 0.5
-                            echo "\$step"
-                        done
+                script {
+                    def zapImage = 'owasp/zap2docker-stable'
+                    def targetUrl = 'http://localhost:3000' // Update with your production URL
+                    def apiKey = UUID.randomUUID().toString()
+                    
+                    // Pull the latest ZAP Docker image
+                    sh "docker pull ${zapImage}"
+                    
+                    // Create reports directory
+                    sh 'mkdir -p zap-reports'
+                    
+                    // Generate ZAP configuration
+                    writeFile file: 'zap-reports/zap.conf', text: """
+                        # ZAP Configuration
+                        api.key=${apiKey}
+                        api.addrs.addr.name=.*
+                        api.addrs.addr.regex=true
+                        scanner.attackStrength=HIGH
+                        scanner.level=PARANOID
+                        connection.timeoutInSecs=600
+                        view.mode=attack
+                    """
+                    
+                    // Run ZAP baseline scan
+                    sh """
+                        docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-baseline.py \
+                            -t ${targetUrl} \
+                            -c zap.conf \
+                            -r baseline-report.html \
+                            -w baseline-report.md \
+                            -x baseline-report.xml \
+                            -J baseline-report.json \
+                            -I \
+                            -l WARN \
+                            -P 443 \
+                            -z "-config scanner.attackStrength=HIGH -config scanner.level=PARANOID"
+                    """
+                    
+                    // Run ZAP full scan with authentication
+                    sh """
+                        docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-full-scan.py \
+                            -t ${targetUrl} \
+                            -c zap.conf \
+                            -r full-scan-report.html \
+                            -w full-scan-report.md \
+                            -x full-scan-report.xml \
+                            -J full-scan-report.json \
+                            -I \
+                            -l WARN \
+                            -P 443 \
+                            -z "-config scanner.attackStrength=HIGH -config scanner.level=PARANOID" \
+                            --hook=/zap/auth.py
+                    """
+                    
+                    // Run API scan if applicable
+                    sh """
+                        docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-api-scan.py \
+                            -t ${targetUrl}/api \
+                            -f openapi \
+                            -c zap.conf \
+                            -r api-scan-report.html \
+                            -w api-scan-report.md \
+                            -J api-scan-report.json \
+                            -I \
+                            -l WARN \
+                            -z "-config scanner.attackStrength=HIGH"
+                    """
+                    
+                    // Archive all reports
+                    archiveArtifacts artifacts: 'zap-reports/*', fingerprint: true
+                    
+                    // Publish HTML reports
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'zap-reports',
+                        reportFiles: '''
+                            baseline-report.html,
+                            full-scan-report.html,
+                            api-scan-report.html
+                        '''.replaceAll('\\s+', ''),
+                        reportName: 'ZAP Security Reports',
+                        reportTitles: 'Baseline Scan,Full Scan,API Scan'
+                    ])
+                    
+                    // Analyze results
+                    def fullScanOutput = readJSON file: 'zap-reports/full-scan-report.json'
+                    def apiScanOutput = readJSON file: 'zap-reports/api-scan-report.json'
+                    
+                    // Check for vulnerabilities
+                    def highRisks = fullScanOutput.site[0].alerts.findAll { it.riskcode >= 3 }
+                    def apiHighRisks = apiScanOutput.site[0].alerts.findAll { it.riskcode >= 3 }
+                    
+                    // Generate summary report
+                    def summary = """
+                        Security Scan Summary:
+                        - Full Scan High Risks: ${highRisks.size()}
+                        - API Scan High Risks: ${apiHighRisks.size()}
+                        - Total High Risk Findings: ${highRisks.size() + apiHighRisks.size()}
+                        
+                        Compliance Status:
+                        - OWASP Top 10: ${highRisks.size() == 0 ? 'PASS' : 'FAIL'}
+                        - PCI DSS: ${highRisks.size() == 0 ? 'PASS' : 'FAIL'}
+                        - GDPR: ${highRisks.size() == 0 ? 'PASS' : 'FAIL'}
+                    """
+                    
+                    writeFile file: 'zap-reports/summary.txt', text: summary
+                    echo summary
+                    
+                    // Fail the build if any high risks are found
+                    if ((highRisks.size() + apiHighRisks.size()) > 0) {
+                        error "Found ${highRisks.size() + apiHighRisks.size()} high-risk vulnerabilities. Deployment blocked."
                     }
-                    
-                    echo "🔒 Initializing production security scan..."
-                    sleep 1
-                    simulate_progress "✓ [zap] Production environment detected" "✓ [zap] Enhanced security rules loaded" "✓ [zap] API key rotated"
-                    
-                    echo "🛡️ Running comprehensive scan..."
-                    simulate_progress "✓ [zap] Spider scan: Started" "✓ [zap] Deep crawl: In Progress" "✓ [zap] Form analysis: Active"
-                    
-                    echo "🔍 Executing OWASP Top 10 checks..."
-                    sleep 2
-                    simulate_progress "✓ [zap] Injection tests: No vulnerabilities" "✓ [zap] Authentication tests: Passed" "✓ [zap] Sensitive data: Protected"
-                    
-                    echo "⚡ Running active penetration tests..."
-                    sleep 1
-                    simulate_progress "✓ [zap] SQL Injection: Passed" "✓ [zap] XSS vectors: Verified" "✓ [zap] CSRF tokens: Valid"
-                    
-                    echo "🔐 Analyzing security headers..."
-                    simulate_progress "✓ [zap] CSP: Properly configured" "✓ [zap] HSTS: Enabled" "✓ [zap] X-Frame-Options: Set"
-                    
-                    echo "📝 Generating comprehensive reports..."
-                    simulate_progress "✓ [zap] HTML report: Generated" "✓ [zap] PDF report: Created" "✓ [zap] SARIF format: Exported"
-                    
-                    echo "✅ [SUCCESS] Production security scan completed"
-                    echo "📊 Security Scan Summary:"
-                    echo "  • Total endpoints tested: 42"
-                    echo "  • Critical Risk: 0"
-                    echo "  • High Risk: 0"
-                    echo "  • Medium Risk: 0"
-                    echo "  • Low Risk: 2"
-                    echo "  • Informational: 5"
-                    echo "  • Status: PASSED"
-                    
-                    echo "📋 Detailed Findings:"
-                    echo "  • Low: Missing Cache-Control Header"
-                    echo "  • Low: Server Version Disclosure"
-                    echo "  • Info: Modern Security Headers Recommended"
-                    
-                    echo "🔒 Security Compliance:"
-                    echo "  • OWASP Top 10: COMPLIANT"
-                    echo "  • PCI DSS: PASSED"
-                    echo "  • GDPR: COMPLIANT"
-                """
+                }
             }
             post {
                 always {
-                    echo "Archiving production security reports..."
-                    echo "Reports would be published to Jenkins artifacts"
+                    // Clean up Docker containers
+                    sh 'docker ps -aq | xargs -r docker rm -f'
                 }
                 failure {
-                    error "Security scan failed - deployment blocked"
+                    // Send notification on security scan failure
+                    emailext (
+                        subject: "Security Scan Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                        body: """
+                            Security scan failed for ${env.JOB_NAME} #${env.BUILD_NUMBER}
+                            
+                            Check the ZAP Security Reports for details:
+                            ${env.BUILD_URL}ZAP_Security_Reports/
+                            
+                            Full build log:
+                            ${env.BUILD_URL}console
+                        """,
+                        recipientProviders: [[$class: 'DevelopersRecipientProvider']]
+                    )
                 }
             }
         }

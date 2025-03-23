@@ -292,54 +292,67 @@ EOL
                 }
             }
             steps {
-                echo "=== Running OWASP ZAP Security Scan ==="
-                sh """
-                    # Function to simulate progress with minimal delays
-                    simulate_progress() {
-                        local steps=(\$@)
-                        for step in "\${steps[@]}"; do
-                            sleep 0.5
-                            echo "\$step"
-                        done
+                script {
+                    def zapImage = 'owasp/zap2docker-stable'
+                    def targetUrl = 'http://localhost:3000' // Update with your app URL
+                    
+                    // Pull the ZAP Docker image
+                    sh "docker pull ${zapImage}"
+                    
+                    // Run ZAP baseline scan
+                    sh """
+                        docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-baseline.py \
+                            -t ${targetUrl} \
+                            -g gen.conf \
+                            -r zap-baseline-report.html \
+                            -w zap-baseline-report.md \
+                            -x zap-baseline-report.xml \
+                            -J zap-baseline-report.json \
+                            -I \
+                            -l WARN
+                    """
+                    
+                    // Run ZAP full scan
+                    sh """
+                        docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-full-scan.py \
+                            -t ${targetUrl} \
+                            -g gen.conf \
+                            -r zap-full-scan-report.html \
+                            -w zap-full-scan-report.md \
+                            -x zap-full-scan-report.xml \
+                            -J zap-full-scan-report.json \
+                            -I \
+                            -l WARN \
+                            --hook=/zap/auth.py
+                    """
+                    
+                    // Archive the reports
+                    archiveArtifacts artifacts: 'zap-reports/*', fingerprint: true
+                    
+                    // Publish HTML reports
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'zap-reports',
+                        reportFiles: 'zap-baseline-report.html,zap-full-scan-report.html',
+                        reportName: 'ZAP Security Reports',
+                        reportTitles: 'Baseline Scan,Full Scan'
+                    ])
+                    
+                    // Check for high-risk vulnerabilities
+                    def zapOutput = readJSON file: 'zap-reports/zap-full-scan-report.json'
+                    def highRisks = zapOutput.site[0].alerts.findAll { it.riskcode >= 3 }
+                    
+                    if (highRisks.size() > 0) {
+                        error "Found ${highRisks.size()} high-risk vulnerabilities. Check ZAP reports for details."
                     }
-                    
-                    echo "🔒 Initializing OWASP ZAP scan..."
-                    sleep 1
-                    simulate_progress "✓ [zap] Docker container: Started" "✓ [zap] API key: Configured" "✓ [zap] Target URL: Set"
-                    
-                    echo "🔍 Running baseline scan..."
-                    simulate_progress "✓ [zap] Spider scan: Started" "✓ [zap] Passive scan: In Progress" "✓ [zap] Active scan: Queued"
-                    
-                    echo "📊 Analyzing vulnerabilities..."
-                    sleep 2
-                    simulate_progress "✓ [zap] SQL Injection tests: No vulnerabilities" "✓ [zap] XSS tests: 1 low risk finding" "✓ [zap] CSRF tests: No vulnerabilities"
-                    
-                    echo "🔬 Running active scan..."
-                    sleep 1
-                    simulate_progress "✓ [zap] Authentication tests: Passed" "✓ [zap] Access control tests: 1 medium risk" "✓ [zap] Input validation: Passed"
-                    
-                    echo "📝 Generating security reports..."
-                    simulate_progress "✓ [zap] HTML report: Generated" "✓ [zap] PDF report: Generated" "✓ [zap] JSON data: Exported"
-                    
-                    echo "✅ [SUCCESS] Security scan completed"
-                    echo "📊 Security Scan Summary:"
-                    echo "  • Total URLs scanned: 24"
-                    echo "  • High Risk: 0"
-                    echo "  • Medium Risk: 1"
-                    echo "  • Low Risk: 1"
-                    echo "  • Informational: 3"
-                    echo "  • Status: PASSED"
-                    
-                    echo "📋 Detailed Findings:"
-                    echo "  • Medium: Missing HTTP Security Headers"
-                    echo "  • Low: Cookie without Secure Flag"
-                    echo "  • Info: Server Technology Information Leak"
-                """
+                }
             }
             post {
                 always {
-                    echo "Archiving ZAP security reports..."
-                    echo "Reports would be published to Jenkins artifacts"
+                    // Clean up Docker containers
+                    sh 'docker ps -aq | xargs -r docker rm -f'
                 }
             }
         }
