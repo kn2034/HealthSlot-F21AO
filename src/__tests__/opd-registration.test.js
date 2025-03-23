@@ -13,6 +13,15 @@ describe('OPD Patient Registration Tests', () => {
             bloodGroup: "A+",
             maritalStatus: "Single"
           },
+          contactInfo: {
+            email: "alice.johnson@email.com",
+            phone: "9876543214",
+            address: {
+              street: "123 Main St",
+              city: "Mumbai",
+              state: "Maharashtra",
+              pincode: "400001"
+            }
 
       });
     });
