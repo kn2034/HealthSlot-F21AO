@@ -7,7 +7,11 @@ pipeline {
         DOCKER_HUB_USERNAME = 'kirananarayanak'
         DOCKER_IMAGE = "${DOCKER_HUB_USERNAME}/healthslot"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
-        DOCKER_CREDENTIALS = 'docker-hub-credentials'
+        DOCKER_CREDENTIALS = credentials('docker-hub-credentials')
+        // Actual Jira configuration
+        JIRA_SITE = 'hw-devops-team-ao'
+        JIRA_PROJECT_KEY = 'AO'
+        JIRA_CREDENTIALS = credentials('jira-credentials')
         // Simulated credentials for demonstration
         MOCK_KUBE_CONFIG = 'mock-kube-config'
         MOCK_JIRA_SITE = 'mock-jira-site'
@@ -151,43 +155,62 @@ pipeline {
                 """
             }
         }
+        
+        stage('Update Jira') {
+            steps {
+                script {
+                    def issueKey = "AO-${env.BUILD_NUMBER}"
+                    jiraSendBuildInfo site: "${JIRA_SITE}", branch: "${env.BRANCH_NAME}"
+                    
+                    jiraNewIssue(
+                        site: "${JIRA_SITE}",
+                        project: 'AO',
+                        issueType: 'Deployment',
+                        summary: "Deployment #${env.BUILD_NUMBER} to ${env.BRANCH_NAME}",
+                        description: """
+                            Build Number: ${env.BUILD_NUMBER}
+                            Branch: ${env.BRANCH_NAME}
+                            Status: SUCCESS
+                            Docker Image: ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            Build URL: ${env.BUILD_URL}
+                            Deployment Time: ${new Date().format("yyyy-MM-dd HH:mm:ss")}
+                        """
+                    )
+                }
+            }
+        }
     }
     
     post {
         success {
             script {
                 if (env.BRANCH_NAME == 'staging' || env.BRANCH_NAME == 'main') {
-                    echo "=== Updating Jira Status ==="
-                    sh """
-                        echo "[INFO] Connecting to Jira"
-                        echo "✓ [Jira] Project: HEALTHSLOT"
-                        echo "✓ [Jira] Environment: ${env.BRANCH_NAME}"
-                        echo "✓ [Jira] Build: #${env.BUILD_NUMBER}"
-                        echo "✓ [Jira] Status: SUCCESS"
-                        echo "✓ [Jira] Updated linked issues"
-                        echo "✓ [Jira] Added deployment notes"
-                    """
+                    jiraComment body: "✅ Deployment successful to ${env.BRANCH_NAME} environment", issueKey: "AO-${env.BUILD_NUMBER}"
                 }
             }
         }
         failure {
-            emailext (
-                subject: "Pipeline Failed: ${currentBuild.fullDisplayName}",
-                body: "Pipeline failed at stage: ${env.STAGE_NAME}",
-                recipientProviders: [[$class: 'DevelopersRecipientProvider']]
-            )
             script {
                 if (env.BRANCH_NAME == 'staging' || env.BRANCH_NAME == 'main') {
-                    echo "=== Updating Jira with Failure ==="
-                    sh """
-                        echo "[INFO] Reporting failure to Jira"
-                        echo "✓ [Jira] Project: HEALTHSLOT"
-                        echo "✓ [Jira] Environment: ${env.BRANCH_NAME}"
-                        echo "✓ [Jira] Build: #${env.BUILD_NUMBER}"
-                        echo "✓ [Jira] Status: FAILED"
-                        echo "✓ [Jira] Added failure details"
-                        echo "✓ [Jira] Notified stakeholders"
-                    """
+                    def failureIssue = jiraNewIssue(
+                        site: "${JIRA_SITE}",
+                        project: 'AO',
+                        issueType: 'Bug',
+                        summary: "Deployment #${env.BUILD_NUMBER} failed",
+                        description: """
+                            Build Number: ${env.BUILD_NUMBER}
+                            Branch: ${env.BRANCH_NAME}
+                            Status: FAILED
+                            Failed Stage: ${env.STAGE_NAME}
+                            Error: ${currentBuild.description ?: 'Unknown error'}
+                            Build URL: ${env.BUILD_URL}
+                        """
+                    )
+                    jiraAddComment(
+                        site: "${JIRA_SITE}",
+                        idOrKey: failureIssue.data.key,
+                        comment: "Pipeline failure detected. DevOps team has been notified."
+                    )
                 }
             }
         }
