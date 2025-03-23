@@ -194,9 +194,32 @@ EOL
                     echo "MongoDB Memory Server Version: $MONGOMS_VERSION"
                     echo "MongoDB System Binary: $MONGOMS_SYSTEM_BINARY"
                     
-                    # Run tests with detailed output
-                    npm test -- --runInBand --verbose
+                    # Run Jest tests
+                    echo "Running Jest tests..."
+                    npm run test:jest -- --runInBand --verbose
+                    
+                    # Run Mocha tests
+                    echo "Running Mocha tests..."
+                    npm run test:mocha
+                    
+                    # Generate coverage report
+                    echo "Generating test coverage report..."
+                    npm run test:coverage
                 '''
+            }
+            post {
+                always {
+                    junit '**/test-results.xml'
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'coverage',
+                        reportFiles: 'index.html',
+                        reportName: 'Coverage Report',
+                        reportTitles: 'Test Coverage Report'
+                    ])
+                }
             }
         }
         
