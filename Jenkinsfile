@@ -164,21 +164,17 @@ pipeline {
                     
                     jiraNewIssue(
                         site: "${JIRA_SITE}",
-                        issueInput: [
-                            fields: [
-                                project: [key: 'AO'],
-                                issuetype: [name: 'Deployment'],
-                                summary: "Deployment #${env.BUILD_NUMBER} to ${env.BRANCH_NAME}",
-                                description: """
-                                    Build Number: ${env.BUILD_NUMBER}
-                                    Branch: ${env.BRANCH_NAME}
-                                    Status: SUCCESS
-                                    Docker Image: ${DOCKER_IMAGE}:${DOCKER_TAG}
-                                    Build URL: ${env.BUILD_URL}
-                                    Deployment Time: ${new Date().format("yyyy-MM-dd HH:mm:ss")}
-                                """
-                            ]
-                        ]
+                        project: 'AO',
+                        issuetype: 'Deployment',
+                        summary: "Deployment #${env.BUILD_NUMBER} to ${env.BRANCH_NAME}",
+                        description: """
+                            Build Number: ${env.BUILD_NUMBER}
+                            Branch: ${env.BRANCH_NAME}
+                            Status: SUCCESS
+                            Docker Image: ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            Build URL: ${env.BUILD_URL}
+                            Deployment Time: ${new Date().format("yyyy-MM-dd HH:mm:ss")}
+                        """
                     )
                 }
             }
@@ -198,21 +194,17 @@ pipeline {
                 if (env.BRANCH_NAME == 'staging' || env.BRANCH_NAME == 'main') {
                     def failureIssue = jiraNewIssue(
                         site: "${JIRA_SITE}",
-                        issueInput: [
-                            fields: [
-                                project: [key: 'AO'],
-                                issuetype: [name: 'Bug'],
-                                summary: "Deployment #${env.BUILD_NUMBER} failed",
-                                description: """
-                                    Build Number: ${env.BUILD_NUMBER}
-                                    Branch: ${env.BRANCH_NAME}
-                                    Status: FAILED
-                                    Failed Stage: ${env.STAGE_NAME}
-                                    Error: ${currentBuild.description ?: 'Unknown error'}
-                                    Build URL: ${env.BUILD_URL}
-                                """
-                            ]
-                        ]
+                        project: 'AO',
+                        issuetype: 'Bug',
+                        summary: "Deployment #${env.BUILD_NUMBER} failed",
+                        description: """
+                            Build Number: ${env.BUILD_NUMBER}
+                            Branch: ${env.BRANCH_NAME}
+                            Status: FAILED
+                            Failed Stage: ${env.STAGE_NAME}
+                            Error: ${currentBuild.description ?: 'Unknown error'}
+                            Build URL: ${env.BUILD_URL}
+                        """
                     )
                     jiraAddComment(
                         site: "${JIRA_SITE}",
