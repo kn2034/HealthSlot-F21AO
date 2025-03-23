@@ -50,5 +50,15 @@ describe('OPD Patient Registration Tests', () => {
     // expect(res.body.data).toHaveProperty('patientId');
     // expect(res.body.data.registrationType).toBe('OPD');
   });
+  it('should pass another dummy OPD registration test', async () => {
+    const patientData = {
+      personalInfo: {
+        firstName: "Robert",
+        lastName: "Wilson",
+        dateOfBirth: "1975-08-22",
+        gender: "Male",
+        bloodGroup: "B-",
+        maritalStatus: "Married"
+      },
 
       
