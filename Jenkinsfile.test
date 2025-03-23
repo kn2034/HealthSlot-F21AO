@@ -177,49 +177,9 @@ EOL
             }
             steps {
                 sh '''
-                    # Add Homebrew's node path to PATH
-                    export PATH="/opt/homebrew/opt/node@18/bin:$PATH"
-                    
-                    export NODE_ENV=test
-                    export NODE_OPTIONS="--max-old-space-size=4096"
-                    export MONGOMS_VERSION=7.0.5
-                    export MONGOMS_DEBUG=1
-                    export JEST_TIMEOUT=30000
-                    export MONGOMS_SYSTEM_BINARY=/opt/homebrew/bin/mongod
-                    
-                    # Show test environment
-                    echo "Node version: $(node --version)"
-                    echo "NPM version: $(npm --version)"
-                    echo "NODE_ENV: $NODE_ENV"
-                    echo "MongoDB Memory Server Version: $MONGOMS_VERSION"
-                    echo "MongoDB System Binary: $MONGOMS_SYSTEM_BINARY"
-                    
-                    # Run Jest tests
-                    echo "Running Jest tests..."
-                    npm run test:jest -- --runInBand --verbose
-                    
-                    # Run Mocha tests
-                    echo "Running Mocha tests..."
-                    npm run test:mocha
-                    
-                    # Generate coverage report
-                    echo "Generating test coverage report..."
-                    npm run test:coverage
+                    npm run test:jest -- --runInBand --verbose --ci
+                    JUNIT_REPORT_PATH=test-results/mocha-junit.xml npm run test:mocha -- --reporter mocha-junit-reporter
                 '''
-            }
-            post {
-                always {
-                    junit '**/test-results.xml'
-                    publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'coverage',
-                        reportFiles: 'index.html',
-                        reportName: 'Coverage Report',
-                        reportTitles: 'Test Coverage Report'
-                    ])
-                }
             }
         }
         
