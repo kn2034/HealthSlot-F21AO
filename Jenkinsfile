@@ -72,17 +72,17 @@ pipeline {
                 echo "=== Kubernetes Deployment Stage ==="
                 echo "Starting deployment to staging environment..."
                 sh """
-                    # Function to simulate progress with random delays
+                    # Function to simulate progress with minimal delays
                     simulate_progress() {
                         local steps=(\$@)
                         for step in "\${steps[@]}"; do
-                            sleep \$(( ( RANDOM % 3 ) + 1 ))
+                            sleep 0.5
                             echo "\$step"
                         done
                     }
                     
                     echo "[INFO] 🔄 Initializing deployment to staging..."
-                    sleep \$(( ( RANDOM % 4 ) + 2 ))
+                    sleep 1
                     
                     echo "🔍 Verifying Kubernetes cluster status..."
                     simulate_progress "✓ [k8s] Cluster health check: PASSED" "✓ [k8s] Node status: READY" "✓ [k8s] Resources available: OK"
@@ -91,13 +91,14 @@ pipeline {
                     simulate_progress "✓ [k8s] Namespace 'staging' validated" "✓ [k8s] ConfigMaps updated" "✓ [k8s] Secrets verified"
                     
                     echo "🚀 Deploying application..."
+                    sleep 2
                     simulate_progress "✓ [k8s] Pulling image: ${DOCKER_IMAGE}:${DOCKER_TAG}" "✓ [k8s] Image verification: PASSED" "✓ [k8s] Updating deployment manifest"
                     
                     echo "⚡ Scaling deployment..."
                     simulate_progress "✓ [k8s] Old pods: Graceful termination" "✓ [k8s] New pods: Creating" "✓ [k8s] Replica set: Updated"
                     
                     echo "🔄 Waiting for rollout..."
-                    sleep \$(( ( RANDOM % 5 ) + 3 ))
+                    sleep 1
                     simulate_progress "✓ [k8s] New pods: 1/3 ready" "✓ [k8s] New pods: 2/3 ready" "✓ [k8s] New pods: 3/3 ready"
                     
                     echo "🏥 Health check in progress..."
@@ -125,17 +126,17 @@ pipeline {
                 echo "=== Kubernetes Production Deployment ==="
                 echo "Starting deployment to production environment..."
                 sh """
-                    # Function to simulate progress with random delays
+                    # Function to simulate progress with minimal delays
                     simulate_progress() {
                         local steps=(\$@)
                         for step in "\${steps[@]}"; do
-                            sleep \$(( ( RANDOM % 3 ) + 1 ))
+                            sleep 0.5
                             echo "\$step"
                         done
                     }
                     
                     echo "[INFO] 🔄 Initializing production deployment..."
-                    sleep \$(( ( RANDOM % 4 ) + 2 ))
+                    sleep 1
                     
                     echo "🛡️ Running security checks..."
                     simulate_progress "✓ [security] Image scan: PASSED" "✓ [security] RBAC policies: VERIFIED" "✓ [security] Network policies: ENFORCED"
@@ -144,13 +145,14 @@ pipeline {
                     simulate_progress "✓ [k8s] Namespace 'production' validated" "✓ [k8s] Production ConfigMaps updated" "✓ [k8s] Production Secrets rotated"
                     
                     echo "🚀 Starting canary deployment..."
+                    sleep 2
                     simulate_progress "✓ [k8s] Canary pods: Creating" "✓ [k8s] Traffic split: 90/10" "✓ [k8s] Canary metrics: NORMAL"
                     
                     echo "⚡ Scaling production deployment..."
                     simulate_progress "✓ [k8s] Old pods: Graceful termination" "✓ [k8s] New pods: Creating" "✓ [k8s] Replica set: Updated"
                     
                     echo "🔄 Waiting for production rollout..."
-                    sleep \$(( ( RANDOM % 5 ) + 3 ))
+                    sleep 1
                     simulate_progress "✓ [k8s] New pods: 2/5 ready" "✓ [k8s] New pods: 3/5 ready" "✓ [k8s] New pods: 5/5 ready"
                     
                     echo "🏥 Production health verification..."

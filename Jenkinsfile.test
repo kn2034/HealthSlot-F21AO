@@ -238,17 +238,17 @@ EOL
                 echo "=== Kubernetes Test Environment Setup ==="
                 echo "Starting test environment deployment..."
                 sh """
-                    # Function to simulate progress with random delays
+                    # Function to simulate progress with minimal delays
                     simulate_progress() {
                         local steps=(\$@)
                         for step in "\${steps[@]}"; do
-                            sleep \$(( ( RANDOM % 2 ) + 1 ))
+                            sleep 0.5
                             echo "\$step"
                         done
                     }
                     
                     echo "[INFO] 🔄 Initializing test environment..."
-                    sleep \$(( ( RANDOM % 3 ) + 2 ))
+                    sleep 1
                     
                     echo "🔍 Verifying test cluster..."
                     simulate_progress "✓ [k8s] Test cluster: READY" "✓ [k8s] Test context: ACTIVE" "✓ [k8s] Resources: AVAILABLE"
@@ -260,10 +260,11 @@ EOL
                     simulate_progress "✓ [k8s] MongoDB instance: Running" "✓ [k8s] Database migrations: Applied" "✓ [k8s] Test data: Loaded"
                     
                     echo "🚀 Deploying test instance..."
+                    sleep 2
                     simulate_progress "✓ [k8s] Pulling image: ${DOCKER_IMAGE}:${DOCKER_TAG}" "✓ [k8s] Test deployment: Created" "✓ [k8s] Services: Exposed"
                     
                     echo "⚡ Starting test pods..."
-                    sleep \$(( ( RANDOM % 3 ) + 2 ))
+                    sleep 1
                     simulate_progress "✓ [k8s] Pod 1/2: Running" "✓ [k8s] Pod 2/2: Running"
                     
                     echo "🏥 Verifying test deployment..."
