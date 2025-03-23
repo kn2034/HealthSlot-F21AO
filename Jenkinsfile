@@ -122,7 +122,7 @@ pipeline {
             steps {
                 script {
                     def zapImage = 'ghcr.io/zaproxy/zaproxy:stable'
-                    def targetUrl = 'http://localhost:3000' // Update with your production URL
+                    def targetUrl = 'http://host.docker.internal:3000' // Use Docker host networking
                     def apiKey = UUID.randomUUID().toString()
                     
                     // Login to Docker Hub
@@ -136,22 +136,33 @@ pipeline {
                     // Create reports directory
                     sh 'mkdir -p zap-reports'
                     
-                    // Wait for application to be ready
+                    // Start the application if not already running
                     sh """
+                        echo "Starting application..."
+                        npm start &
+                        
                         echo "Waiting for application to be ready..."
-                        for i in \$(seq 1 30); do
-                            if curl -s ${targetUrl} >/dev/null; then
+                        for i in \$(seq 1 60); do
+                            if curl -s http://localhost:3000 >/dev/null; then
                                 echo "Application is ready"
                                 break
                             fi
-                            echo "Waiting... \$i/30"
+                            if [ \$i -eq 60 ]; then
+                                echo "Timeout waiting for application"
+                                exit 1
+                            fi
+                            echo "Waiting... \$i/60"
                             sleep 2
                         done
                     """
                     
-                    // Run ZAP baseline scan
+                    // Run ZAP baseline scan with Docker host networking
                     sh """
-                        docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-baseline.py \
+                        docker run --rm \
+                            --network host \
+                            -v \$(pwd)/zap-reports:/zap/wrk:rw \
+                            -e HOST_DOMAIN=host.docker.internal \
+                            ${zapImage} zap-baseline.py \
                             -t ${targetUrl} \
                             -r baseline-report.html \
                             -w baseline-report.md \
@@ -164,7 +175,11 @@ pipeline {
                     
                     // Run API scan if applicable
                     sh """
-                        docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-api-scan.py \
+                        docker run --rm \
+                            --network host \
+                            -v \$(pwd)/zap-reports:/zap/wrk:rw \
+                            -e HOST_DOMAIN=host.docker.internal \
+                            ${zapImage} zap-api-scan.py \
                             -t ${targetUrl}/api \
                             -f openapi \
                             -r api-scan-report.html \

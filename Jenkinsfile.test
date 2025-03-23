@@ -294,7 +294,7 @@ EOL
             steps {
                 script {
                     def zapImage = 'ghcr.io/zaproxy/zaproxy:stable'
-                    def targetUrl = 'http://localhost:3000' // Update with your app URL
+                    def targetUrl = 'http://host.docker.internal:3000' // Use Docker host networking
                     
                     // Login to Docker Hub
                     sh """
@@ -307,22 +307,33 @@ EOL
                     // Create reports directory
                     sh 'mkdir -p zap-reports'
                     
-                    // Wait for application to be ready
+                    // Start the application if not already running
                     sh """
+                        echo "Starting application..."
+                        npm start &
+                        
                         echo "Waiting for application to be ready..."
-                        for i in \$(seq 1 30); do
-                            if curl -s ${targetUrl} >/dev/null; then
+                        for i in \$(seq 1 60); do
+                            if curl -s http://localhost:3000 >/dev/null; then
                                 echo "Application is ready"
                                 break
                             fi
-                            echo "Waiting... \$i/30"
+                            if [ \$i -eq 60 ]; then
+                                echo "Timeout waiting for application"
+                                exit 1
+                            fi
+                            echo "Waiting... \$i/60"
                             sleep 2
                         done
                     """
                     
-                    // Run ZAP baseline scan with reduced scope
+                    // Run ZAP baseline scan with Docker host networking
                     sh """
-                        docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-baseline.py \
+                        docker run --rm \
+                            --network host \
+                            -v \$(pwd)/zap-reports:/zap/wrk:rw \
+                            -e HOST_DOMAIN=host.docker.internal \
+                            ${zapImage} zap-baseline.py \
                             -t ${targetUrl} \
                             -r zap-baseline-report.html \
                             -w zap-baseline-report.md \
