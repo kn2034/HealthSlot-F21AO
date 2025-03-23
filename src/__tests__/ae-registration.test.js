@@ -26,6 +26,17 @@ describe('A&E Patient Registration Tests', () => {
         name: "Jane Doe",
         relationship: "Spouse",
         phone: "9876543211"
+      },
+      emergencyDetails: {
+        injuryType: "Head Trauma",
+        arrivalMode: "Ambulance",
+        chiefComplaint: "Car accident injury",
+        vitalSigns: {
+          bloodPressure: "140/90",
+          pulseRate: 95,
+          temperature: 37.5,
+          oxygenSaturation: 98
+        }
       }
     };
       // Using dummy endpoint that always passes
