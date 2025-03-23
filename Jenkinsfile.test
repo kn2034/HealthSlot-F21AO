@@ -177,12 +177,22 @@ EOL
             }
             steps {
                 sh '''
+                    # Create test results directory
+                    mkdir -p test-results
+                    
+                    # Run tests with JUnit reporter
+                    JEST_JUNIT_OUTPUT_DIR=test-results \
+                    JEST_JUNIT_OUTPUT_NAME=jest-junit.xml \
+                    JEST_JUNIT_CLASSNAME="{classname}" \
+                    JEST_JUNIT_TITLE="{title}" \
+                    JEST_JUNIT_ANCESTOR_SEPARATOR=" › " \
+                    JEST_JUNIT_SUITE_NAME="{filepath}" \
                     npm run test:jest -- --runInBand --verbose --ci --reporters=default --reporters=jest-junit
                 '''
             }
             post {
                 always {
-                    junit '**/test-results/jest-junit.xml'
+                    junit testResults: 'test-results/jest-junit.xml', allowEmptyResults: true
                 }
             }
         }
