@@ -45,6 +45,15 @@ app.use('/api/lab', testRegistrationRoutes);
 app.use('/api/lab', labTestRoutes);
 app.use('/api/lab', testResultRoutes);
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '1.0.0'
+  });
+});
+
 // Basic route for testing
 app.get('/', (req, res) => {
   res.json({ message: 'Server is running!' });
