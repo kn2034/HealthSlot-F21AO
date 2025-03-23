@@ -1,13 +1,20 @@
 module.exports = {
   testTimeout: 30000,
   testEnvironment: "node",
-  setupFilesAfterEnv: ["./jest.setup.js"],
+  setupFilesAfterEnv: ["./test-setup/jest.setup.js"],
   verbose: true,
   detectOpenHandles: true,
   forceExit: true,
-  testPathIgnorePatterns: ["/node_modules/"],
-  globalSetup: "./jest.global-setup.js",
-  globalTeardown: "./jest.global-teardown.js",
+  testMatch: [
+    "**/src/__tests__/**/*.test.js",
+    "**/test/**/*.spec.js"
+  ],
+  testPathIgnorePatterns: [
+    "/node_modules/",
+    "/test-setup/"
+  ],
+  globalSetup: "./test-setup/jest.global-setup.js",
+  globalTeardown: "./test-setup/jest.global-teardown.js",
   reporters: [
     "default",
     ["jest-junit", {
