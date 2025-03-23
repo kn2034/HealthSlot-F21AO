@@ -268,10 +268,19 @@ EOL
         stage('Report Test Results') {
             steps {
                 script {
+                    // First, get the issue types for the project
+                    def issueTypes = jiraGetProjectIssueTypes idOrKey: 'AO'
+                    
+                    // Find the Test Execution issue type ID
+                    def testExecutionType = issueTypes.data.find { it.name == 'Test Execution' }
+                    if (!testExecutionType) {
+                        error "Could not find Test Execution issue type"
+                    }
+                    
                     def testIssue = [
                         fields: [
                             project: [key: 'AO'],
-                            issuetype: [name: 'Test Execution'],
+                            issuetype: [id: testExecutionType.id],
                             summary: "Test Run #${env.BUILD_NUMBER} - ${env.BRANCH_NAME}",
                             description: """
                                 Test Cycle: ${JIRA_TEST_CYCLE}
@@ -319,6 +328,13 @@ EOL
         }
         failure {
             script {
+                // Get issue types again to find Bug type ID
+                def issueTypes = jiraGetProjectIssueTypes idOrKey: 'AO'
+                def bugType = issueTypes.data.find { it.name == 'Bug' }
+                if (!bugType) {
+                    error "Could not find Bug issue type"
+                }
+                
                 def failureDescription = """
                     Test Cycle: ${JIRA_TEST_CYCLE}
                     Build Number: ${env.BUILD_NUMBER}
@@ -341,7 +357,7 @@ EOL
                 def bugIssue = [
                     fields: [
                         project: [key: 'AO'],
-                        issuetype: [name: 'Bug'],
+                        issuetype: [id: bugType.id],
                         summary: "Test Failures in Build #${env.BUILD_NUMBER}",
                         description: failureDescription
                     ]

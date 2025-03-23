@@ -159,13 +159,20 @@ pipeline {
         stage('Update Jira') {
             steps {
                 script {
+                    // Get issue types for the project
+                    def issueTypes = jiraGetProjectIssueTypes idOrKey: 'AO'
+                    def deploymentType = issueTypes.data.find { it.name == 'Deployment' }
+                    if (!deploymentType) {
+                        error "Could not find Deployment issue type"
+                    }
+                    
                     def issueKey = "AO-${env.BUILD_NUMBER}"
                     jiraSendBuildInfo site: "${JIRA_SITE}", branch: "${env.BRANCH_NAME}"
                     
                     def deploymentIssue = [
                         fields: [
                             project: [key: 'AO'],
-                            issuetype: [name: 'Deployment'],
+                            issuetype: [id: deploymentType.id],
                             summary: "Deployment #${env.BUILD_NUMBER} to ${env.BRANCH_NAME}",
                             description: """
                                 Build Number: ${env.BUILD_NUMBER}
@@ -181,26 +188,6 @@ pipeline {
                     def response = jiraNewIssue issue: deploymentIssue, site: "${JIRA_SITE}"
                     
                     jiraAddComment idOrKey: "AO-${env.BUILD_NUMBER}", comment: "✅ Deployment successful to ${env.BRANCH_NAME} environment", site: "${JIRA_SITE}"
-                    
-                    def failureIssue = [
-                        fields: [
-                            project: [key: 'AO'],
-                            issuetype: [name: 'Bug'],
-                            summary: "Deployment #${env.BUILD_NUMBER} failed",
-                            description: """
-                                Build Number: ${env.BUILD_NUMBER}
-                                Branch: ${env.BRANCH_NAME}
-                                Status: FAILED
-                                Failed Stage: ${env.STAGE_NAME}
-                                Error: ${currentBuild.description ?: 'Unknown error'}
-                                Build URL: ${env.BUILD_URL}
-                            """
-                        ]
-                    ]
-                    
-                    def bugResponse = jiraNewIssue issue: failureIssue, site: "${JIRA_SITE}"
-                    
-                    jiraAddComment idOrKey: bugResponse.data.key, comment: "Pipeline failure detected. DevOps team has been notified.", site: "${JIRA_SITE}"
                 }
             }
         }
@@ -217,25 +204,32 @@ pipeline {
         failure {
             script {
                 if (env.BRANCH_NAME == 'staging' || env.BRANCH_NAME == 'main') {
-                    def failureIssue = jiraNewIssue(
-                        site: "${JIRA_SITE}",
-                        project: 'AO',
-                        issuetype: 'Bug',
-                        summary: "Deployment #${env.BUILD_NUMBER} failed",
-                        description: """
-                            Build Number: ${env.BUILD_NUMBER}
-                            Branch: ${env.BRANCH_NAME}
-                            Status: FAILED
-                            Failed Stage: ${env.STAGE_NAME}
-                            Error: ${currentBuild.description ?: 'Unknown error'}
-                            Build URL: ${env.BUILD_URL}
-                        """
-                    )
-                    jiraAddComment(
-                        site: "${JIRA_SITE}",
-                        idOrKey: failureIssue.data.key,
-                        comment: "Pipeline failure detected. DevOps team has been notified."
-                    )
+                    // Get issue types for the project
+                    def issueTypes = jiraGetProjectIssueTypes idOrKey: 'AO'
+                    def bugType = issueTypes.data.find { it.name == 'Bug' }
+                    if (!bugType) {
+                        error "Could not find Bug issue type"
+                    }
+                    
+                    def failureIssue = [
+                        fields: [
+                            project: [key: 'AO'],
+                            issuetype: [id: bugType.id],
+                            summary: "Deployment #${env.BUILD_NUMBER} failed",
+                            description: """
+                                Build Number: ${env.BUILD_NUMBER}
+                                Branch: ${env.BRANCH_NAME}
+                                Status: FAILED
+                                Failed Stage: ${env.STAGE_NAME}
+                                Error: ${currentBuild.description ?: 'Unknown error'}
+                                Build URL: ${env.BUILD_URL}
+                            """
+                        ]
+                    ]
+                    
+                    def bugResponse = jiraNewIssue issue: failureIssue, site: "${JIRA_SITE}"
+                    
+                    jiraAddComment idOrKey: bugResponse.data.key, comment: "Pipeline failure detected. DevOps team has been notified.", site: "${JIRA_SITE}"
                 }
             }
         }
