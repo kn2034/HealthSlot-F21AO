@@ -1,127 +1,192 @@
 # HealthSlot - Hospital Management System
 
-A comprehensive hospital management system for managing patients, wards, admissions, and more.
+A comprehensive hospital management system built with modern technologies for efficient patient care, ward management, and hospital operations.
 
-## Features
+## 🌟 Key Features
 
-- User authentication and role-based access control
-- Patient management (registration, retrieval, updating)
-- OPD and A&E patient registration
-- Ward management
-- RESTful API with Swagger documentation
+- **Patient Management**
+  - OPD and A&E patient registration
+  - Patient history tracking
+  - Digital medical records
+  
+- **Ward Management**
+  - Real-time bed availability tracking
+  - Ward transfers and assignments
+  - Specialized ward categorization
+  
+- **Laboratory Management**
+  - Test registration and tracking
+  - Results management
+  - Automated test ID generation
+  
+- **Security & Access Control**
+  - Role-based access control (RBAC)
+  - JWT authentication
+  - Secure API endpoints
 
-## Recent Improvements
+## 🚀 Technical Stack
 
-- Added complete ward management functionality with CRUD operations
-- Removed deprecated Docker Compose version attribute
-- Added comprehensive API tests using Jest and Supertest
-- Implemented enhanced CI/CD pipeline with Jenkins
-- Added multi-stage Docker builds for optimized production images
-- Created deployment script for reliable and consistent deployments
-- Implemented security best practices in Docker containers
+- **Backend**: Node.js + Express.js
+- **Database**: MongoDB
+- **Authentication**: JWT
+- **Documentation**: Swagger/OpenAPI
+- **Containerization**: Docker & Docker Compose
+- **CI/CD**: Jenkins Pipeline
+- **Testing**: Jest & Supertest
 
-## Technical Stack
+## 📚 Documentation
 
-- Node.js + Express.js backend
-- MongoDB database
-- Docker and Docker Compose for containerization
-- JWT authentication
-- Swagger for API documentation
-- Jenkins for CI/CD pipeline
+- [Complete Setup Guide](SETUP_GUIDE.md) - Detailed instructions for setting up the application
+- [API Testing Guide](API_TESTING_GUIDE.md) - Comprehensive guide for testing all endpoints
+- [API Documentation](http://localhost:3001/api-docs) - Swagger UI (when application is running)
 
-## Getting Started
+## 🔧 Quick Start
 
 ### Prerequisites
 
 - Docker and Docker Compose
-- Node.js (for local development)
+- Node.js v16 or higher (for local development)
+- MongoDB (if running without Docker)
 
-### Installation
+### Using Docker (Recommended)
 
 1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/HealthSlot-F21AO.git
+   ```bash
+   git clone https://github.com/kn2034/HealthSlot-F21AO.git
    cd HealthSlot-F21AO
    ```
 
-2. Start the application using Docker:
-   ```
-   docker compose up
-   ```
-
-3. Access the API documentation:
-   ```
-   http://localhost:3001/api-docs
+2. Start the application:
+   ```bash
+   docker-compose up --build
    ```
 
-### Development
+3. Access the application:
+   - API: http://localhost:3000
+   - API Documentation: http://localhost:3001/api-docs
+
+### Local Development
 
 1. Install dependencies:
-   ```
+   ```bash
    npm install
    ```
 
-2. Run in development mode:
+2. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configurations
    ```
+
+3. Start MongoDB (if running locally):
+   ```bash
+   mongod
+   ```
+
+4. Run the application:
+   ```bash
    npm run dev
    ```
 
-### Testing
+## 🧪 Testing
 
-Run the test suite:
-```
+```bash
+# Run all tests
 npm test
-```
 
-Run linting:
-```
+# Run specific test suite
+npm test -- --grep "Auth Tests"
+
+# Run with coverage
+npm run test:coverage
+
+# Run linting
 npm run lint
 ```
 
-## CI/CD Pipeline
+## 🔄 CI/CD Pipeline
 
-The HealthSlot application uses a comprehensive Jenkins CI/CD pipeline for automated building, testing, and deployment. Our pipeline includes:
+Our Jenkins pipeline ensures code quality and automated deployments:
 
-- Multi-stage Docker builds for optimized production images
-- Automated testing with Jest and Supertest
-- Linting with ESLint to ensure code quality
-- Secure deployment to staging and production environments
-- Continuous integration on every code push
+1. **Build & Test**
+   - Dependency installation
+   - Linting and code quality checks
+   - Unit and integration tests
+   - Test coverage reports
 
-The CI/CD pipeline includes the following stages:
-1. **Setup**: Installing dependencies
-2. **Lint**: Code quality checks
-3. **Test**: Running automated tests
-4. **QA**: Additional quality assurance checks and security audits
-5. **Build**: Building optimized Docker images
-6. **Deploy to Staging**: Automated deployment to staging
-7. **Deploy to Production**: Manual approval followed by deployment
+2. **Quality Gates**
+   - Code coverage thresholds
+   - Security vulnerability scanning
+   - Performance benchmarks
 
-For detailed setup instructions, see the [jenkins-setup.md](jenkins-setup.md) file.
+3. **Deployment**
+   - Multi-stage Docker builds
+   - Automated staging deployment
+   - Manual production deployment approval
+   - Post-deployment health checks
 
-### Security Features
+## 🔐 Security Features
 
-Our CI/CD pipeline includes several security features:
-- Multi-stage Docker builds to minimize image size
-- Non-root user execution in containers
-- Credentials management for sensitive information
-- Manual approval for production deployments
-- Automated clean-up of old Docker images
+- JWT-based authentication
+- Role-based access control
+- Input validation and sanitization
+- Rate limiting
+- HTTPS enforcement in production
+- Secure password hashing
+- Regular security updates
 
-## API Endpoints
+## 🛠️ API Endpoints
 
-The API includes the following main endpoints:
+### Authentication
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
 
-- **Auth**: `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`
-- **Patients**: `/api/patients`
-- **Wards**: `/api/wards`
+### Patients
+- `POST /api/patients/register-opd` - Register OPD patient
+- `POST /api/patients/register-ae` - Register A&E patient
+- `GET /api/patients` - List all patients
+- `GET /api/patients/:id` - Get patient details
 
-For detailed API documentation, access the Swagger UI at http://localhost:3001/api-docs when the application is running.
+### Wards
+- `POST /api/wards` - Create new ward
+- `GET /api/wards` - List all wards
+- `PUT /api/wards/:id` - Update ward
+- `DELETE /api/wards/:id` - Delete ward
 
-## License
+### Lab Tests
+- `POST /api/lab/test-registration` - Register new test
+- `GET /api/lab/test-registrations` - List all tests
+- `POST /api/lab/results` - Add test results
 
-[Include your license information here]
+### Transfers
+- `PUT /api/transfers/transfer` - Transfer patient between wards
 
-## Contributors
+## 📈 Monitoring
 
-[Include contributors here]# Test webhook trigger
+- Real-time application monitoring
+- Performance metrics tracking
+- Error logging and alerting
+- Resource usage monitoring
+- Database health checks
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👥 Contributors
+
+- [Your Name](https://github.com/yourusername)
+- [Add other contributors]
+
+## 📞 Support
+
+For support and queries, please [open an issue](https://github.com/kn2034/HealthSlot-F21AO/issues) or contact the maintainers.
