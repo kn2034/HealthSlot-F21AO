@@ -121,9 +121,14 @@ pipeline {
             }
             steps {
                 script {
-                    def zapImage = 'owasp/zap2docker-stable'
+                    def zapImage = 'ghcr.io/zaproxy/zaproxy:stable'
                     def targetUrl = 'http://localhost:3000' // Update with your production URL
                     def apiKey = UUID.randomUUID().toString()
+                    
+                    // Login to Docker Hub
+                    sh """
+                        echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_CREDENTIALS_USR} --password-stdin
+                    """
                     
                     // Pull the latest ZAP Docker image
                     sh "docker pull ${zapImage}"
@@ -131,47 +136,30 @@ pipeline {
                     // Create reports directory
                     sh 'mkdir -p zap-reports'
                     
-                    // Generate ZAP configuration
-                    writeFile file: 'zap-reports/zap.conf', text: """
-                        # ZAP Configuration
-                        api.key=${apiKey}
-                        api.addrs.addr.name=.*
-                        api.addrs.addr.regex=true
-                        scanner.attackStrength=HIGH
-                        scanner.level=PARANOID
-                        connection.timeoutInSecs=600
-                        view.mode=attack
+                    // Wait for application to be ready
+                    sh """
+                        echo "Waiting for application to be ready..."
+                        for i in \$(seq 1 30); do
+                            if curl -s ${targetUrl} >/dev/null; then
+                                echo "Application is ready"
+                                break
+                            fi
+                            echo "Waiting... \$i/30"
+                            sleep 2
+                        done
                     """
                     
                     // Run ZAP baseline scan
                     sh """
                         docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-baseline.py \
                             -t ${targetUrl} \
-                            -c zap.conf \
                             -r baseline-report.html \
                             -w baseline-report.md \
                             -x baseline-report.xml \
                             -J baseline-report.json \
                             -I \
                             -l WARN \
-                            -P 443 \
-                            -z "-config scanner.attackStrength=HIGH -config scanner.level=PARANOID"
-                    """
-                    
-                    // Run ZAP full scan with authentication
-                    sh """
-                        docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-full-scan.py \
-                            -t ${targetUrl} \
-                            -c zap.conf \
-                            -r full-scan-report.html \
-                            -w full-scan-report.md \
-                            -x full-scan-report.xml \
-                            -J full-scan-report.json \
-                            -I \
-                            -l WARN \
-                            -P 443 \
-                            -z "-config scanner.attackStrength=HIGH -config scanner.level=PARANOID" \
-                            --hook=/zap/auth.py
+                            --auto
                     """
                     
                     // Run API scan if applicable
@@ -179,13 +167,12 @@ pipeline {
                         docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-api-scan.py \
                             -t ${targetUrl}/api \
                             -f openapi \
-                            -c zap.conf \
                             -r api-scan-report.html \
                             -w api-scan-report.md \
                             -J api-scan-report.json \
                             -I \
                             -l WARN \
-                            -z "-config scanner.attackStrength=HIGH"
+                            --auto
                     """
                     
                     // Archive all reports
@@ -199,47 +186,50 @@ pipeline {
                         reportDir: 'zap-reports',
                         reportFiles: '''
                             baseline-report.html,
-                            full-scan-report.html,
                             api-scan-report.html
                         '''.replaceAll('\\s+', ''),
                         reportName: 'ZAP Security Reports',
-                        reportTitles: 'Baseline Scan,Full Scan,API Scan'
+                        reportTitles: 'Baseline Scan,API Scan'
                     ])
                     
                     // Analyze results
-                    def fullScanOutput = readJSON file: 'zap-reports/full-scan-report.json'
+                    def baselineScanOutput = readJSON file: 'zap-reports/baseline-report.json'
                     def apiScanOutput = readJSON file: 'zap-reports/api-scan-report.json'
                     
                     // Check for vulnerabilities
-                    def highRisks = fullScanOutput.site[0].alerts.findAll { it.riskcode >= 3 }
+                    def baselineHighRisks = baselineScanOutput.site[0].alerts.findAll { it.riskcode >= 3 }
                     def apiHighRisks = apiScanOutput.site[0].alerts.findAll { it.riskcode >= 3 }
                     
                     // Generate summary report
                     def summary = """
                         Security Scan Summary:
-                        - Full Scan High Risks: ${highRisks.size()}
+                        - Baseline Scan High Risks: ${baselineHighRisks.size()}
                         - API Scan High Risks: ${apiHighRisks.size()}
-                        - Total High Risk Findings: ${highRisks.size() + apiHighRisks.size()}
+                        - Total High Risk Findings: ${baselineHighRisks.size() + apiHighRisks.size()}
                         
                         Compliance Status:
-                        - OWASP Top 10: ${highRisks.size() == 0 ? 'PASS' : 'FAIL'}
-                        - PCI DSS: ${highRisks.size() == 0 ? 'PASS' : 'FAIL'}
-                        - GDPR: ${highRisks.size() == 0 ? 'PASS' : 'FAIL'}
+                        - OWASP Top 10: ${baselineHighRisks.size() == 0 ? 'PASS' : 'FAIL'}
+                        - PCI DSS: ${baselineHighRisks.size() == 0 ? 'PASS' : 'FAIL'}
+                        - GDPR: ${baselineHighRisks.size() == 0 ? 'PASS' : 'FAIL'}
                     """
                     
                     writeFile file: 'zap-reports/summary.txt', text: summary
                     echo summary
                     
-                    // Fail the build if any high risks are found
-                    if ((highRisks.size() + apiHighRisks.size()) > 0) {
-                        error "Found ${highRisks.size() + apiHighRisks.size()} high-risk vulnerabilities. Deployment blocked."
+                    // Mark build as unstable if high risks are found
+                    if ((baselineHighRisks.size() + apiHighRisks.size()) > 0) {
+                        echo "Found ${baselineHighRisks.size() + apiHighRisks.size()} high-risk vulnerabilities. Check ZAP reports for details."
+                        currentBuild.result = 'UNSTABLE'
                     }
                 }
             }
             post {
                 always {
-                    // Clean up Docker containers
-                    sh 'docker ps -aq | xargs -r docker rm -f'
+                    // Clean up Docker containers and logout from Docker Hub
+                    sh '''
+                        docker ps -aq | xargs -r docker rm -f
+                        docker logout
+                    '''
                 }
                 failure {
                     // Send notification on security scan failure

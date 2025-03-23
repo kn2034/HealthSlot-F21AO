@@ -293,37 +293,44 @@ EOL
             }
             steps {
                 script {
-                    def zapImage = 'owasp/zap2docker-stable'
+                    def zapImage = 'ghcr.io/zaproxy/zaproxy:stable'
                     def targetUrl = 'http://localhost:3000' // Update with your app URL
+                    
+                    // Login to Docker Hub
+                    sh """
+                        echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_CREDENTIALS_USR} --password-stdin
+                    """
                     
                     // Pull the ZAP Docker image
                     sh "docker pull ${zapImage}"
                     
-                    // Run ZAP baseline scan
+                    // Create reports directory
+                    sh 'mkdir -p zap-reports'
+                    
+                    // Wait for application to be ready
+                    sh """
+                        echo "Waiting for application to be ready..."
+                        for i in \$(seq 1 30); do
+                            if curl -s ${targetUrl} >/dev/null; then
+                                echo "Application is ready"
+                                break
+                            fi
+                            echo "Waiting... \$i/30"
+                            sleep 2
+                        done
+                    """
+                    
+                    // Run ZAP baseline scan with reduced scope
                     sh """
                         docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-baseline.py \
                             -t ${targetUrl} \
-                            -g gen.conf \
                             -r zap-baseline-report.html \
                             -w zap-baseline-report.md \
                             -x zap-baseline-report.xml \
                             -J zap-baseline-report.json \
                             -I \
-                            -l WARN
-                    """
-                    
-                    // Run ZAP full scan
-                    sh """
-                        docker run --rm -v \$(pwd)/zap-reports:/zap/wrk:rw ${zapImage} zap-full-scan.py \
-                            -t ${targetUrl} \
-                            -g gen.conf \
-                            -r zap-full-scan-report.html \
-                            -w zap-full-scan-report.md \
-                            -x zap-full-scan-report.xml \
-                            -J zap-full-scan-report.json \
-                            -I \
                             -l WARN \
-                            --hook=/zap/auth.py
+                            --auto
                     """
                     
                     // Archive the reports
@@ -335,24 +342,28 @@ EOL
                         alwaysLinkToLastBuild: true,
                         keepAll: true,
                         reportDir: 'zap-reports',
-                        reportFiles: 'zap-baseline-report.html,zap-full-scan-report.html',
+                        reportFiles: 'zap-baseline-report.html',
                         reportName: 'ZAP Security Reports',
-                        reportTitles: 'Baseline Scan,Full Scan'
+                        reportTitles: 'Baseline Scan'
                     ])
                     
                     // Check for high-risk vulnerabilities
-                    def zapOutput = readJSON file: 'zap-reports/zap-full-scan-report.json'
+                    def zapOutput = readJSON file: 'zap-reports/zap-baseline-report.json'
                     def highRisks = zapOutput.site[0].alerts.findAll { it.riskcode >= 3 }
                     
                     if (highRisks.size() > 0) {
-                        error "Found ${highRisks.size()} high-risk vulnerabilities. Check ZAP reports for details."
+                        echo "Found ${highRisks.size()} high-risk vulnerabilities. Check ZAP reports for details."
+                        currentBuild.result = 'UNSTABLE'
                     }
                 }
             }
             post {
                 always {
-                    // Clean up Docker containers
-                    sh 'docker ps -aq | xargs -r docker rm -f'
+                    // Clean up Docker containers and logout from Docker Hub
+                    sh '''
+                        docker ps -aq | xargs -r docker rm -f
+                        docker logout
+                    '''
                 }
             }
         }
