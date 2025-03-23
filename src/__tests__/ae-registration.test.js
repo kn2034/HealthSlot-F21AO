@@ -58,6 +58,11 @@ describe('A&E Patient Registration Tests', () => {
           dateOfBirth: "1985-05-15",
           gender: "Female",
           bloodGroup: "B+"
+        },
+        emergencyContact: {
+          name: "Jane Doe",
+          relationship: "Spouse",
+          phone: "9876543211"
         }
       };
 
