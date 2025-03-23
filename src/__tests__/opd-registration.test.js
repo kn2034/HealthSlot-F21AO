@@ -42,6 +42,4 @@ describe('OPD Patient Registration Tests', () => {
           }
         };
 
-      });
-    });
-});
+      
