@@ -268,10 +268,18 @@ EOL
         stage('Report Test Results') {
             steps {
                 script {
+                    // First, get the project details including issue types
+                    def projectResponse = jiraGetProject idOrKey: 'AO', site: "${JIRA_SITE}"
+                    
+                    // Get all issue types
+                    def issueTypes = jiraGetFields site: "${JIRA_SITE}"
+                    echo "Available issue types: ${issueTypes.data}"
+                    
+                    // Create test issue
                     def testIssue = [
                         fields: [
                             project: [key: 'AO'],
-                            issuetype: [name: 'Test Execution'],
+                            issuetype: [id: '10001'], // Using a standard issue type ID for now
                             summary: "Test Run #${env.BUILD_NUMBER} - ${env.BRANCH_NAME}",
                             description: """
                                 Test Cycle: ${JIRA_TEST_CYCLE}
@@ -287,6 +295,7 @@ EOL
                     
                     // Store the issue key for later use
                     env.TEST_ISSUE_KEY = response.data.key
+                    echo "Created test issue with key: ${env.TEST_ISSUE_KEY}"
                 }
             }
         }
@@ -336,20 +345,22 @@ EOL
                     ]
                 ]
                 
-                jiraEditIssue issue: updateIssue, idOrKey: env.TEST_ISSUE_KEY, site: "${JIRA_SITE}"
-                
-                def bugIssue = [
-                    fields: [
-                        project: [key: 'AO'],
-                        issuetype: [name: 'Bug'],
-                        summary: "Test Failures in Build #${env.BUILD_NUMBER}",
-                        description: failureDescription
+                if (env.TEST_ISSUE_KEY) {
+                    jiraEditIssue issue: updateIssue, idOrKey: env.TEST_ISSUE_KEY, site: "${JIRA_SITE}"
+                    
+                    def bugIssue = [
+                        fields: [
+                            project: [key: 'AO'],
+                            issuetype: [id: '10004'], // Using standard Bug issue type ID
+                            summary: "Test Failures in Build #${env.BUILD_NUMBER}",
+                            description: failureDescription
+                        ]
                     ]
-                ]
-                
-                def bugResponse = jiraNewIssue issue: bugIssue, site: "${JIRA_SITE}"
-                
-                jiraAddComment idOrKey: env.TEST_ISSUE_KEY, comment: "❌ Tests failed. Bug ticket created: ${bugResponse.data.key}", site: "${JIRA_SITE}"
+                    
+                    def bugResponse = jiraNewIssue issue: bugIssue, site: "${JIRA_SITE}"
+                    
+                    jiraAddComment idOrKey: env.TEST_ISSUE_KEY, comment: "❌ Tests failed. Bug ticket created: ${bugResponse.data.key}", site: "${JIRA_SITE}"
+                }
             }
         }
         always {

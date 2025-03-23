@@ -156,6 +156,37 @@ pipeline {
             }
         }
         
+        stage('Create Deployment Issue') {
+            steps {
+                script {
+                    // Get project details and issue types
+                    def projectResponse = jiraGetProject idOrKey: 'AO', site: "${JIRA_SITE}"
+                    def issueTypes = jiraGetFields site: "${JIRA_SITE}"
+                    echo "Available issue types: ${issueTypes.data}"
+                    
+                    def deploymentIssue = [
+                        fields: [
+                            project: [key: 'AO'],
+                            issuetype: [id: '10002'], // Using standard Task issue type ID for deployment
+                            summary: "Deployment #${env.BUILD_NUMBER} to ${env.BRANCH_NAME}",
+                            description: """
+                                Build Number: ${env.BUILD_NUMBER}
+                                Branch: ${env.BRANCH_NAME}
+                                Status: IN PROGRESS
+                                Docker Image: ${env.DOCKER_IMAGE}
+                                Build URL: ${env.BUILD_URL}
+                                Deployment Time: ${new Date().format("yyyy-MM-dd HH:mm:ss")}
+                            """
+                        ]
+                    ]
+                    
+                    def response = jiraNewIssue issue: deploymentIssue, site: "${JIRA_SITE}"
+                    env.DEPLOYMENT_ISSUE_KEY = response.data.key
+                    echo "Created deployment issue with key: ${env.DEPLOYMENT_ISSUE_KEY}"
+                }
+            }
+        }
+        
         stage('Update Jira') {
             steps {
                 script {
@@ -196,11 +227,11 @@ pipeline {
         }
         failure {
             script {
-                if (env.BRANCH_NAME == 'staging' || env.BRANCH_NAME == 'main') {
+                if (env.DEPLOYMENT_ISSUE_KEY) {
                     def failureIssue = [
                         fields: [
                             project: [key: 'AO'],
-                            issuetype: [name: 'Bug'],
+                            issuetype: [id: '10004'], // Using standard Bug issue type ID
                             summary: "Deployment #${env.BUILD_NUMBER} failed",
                             description: """
                                 Build Number: ${env.BUILD_NUMBER}
@@ -214,8 +245,7 @@ pipeline {
                     ]
                     
                     def bugResponse = jiraNewIssue issue: failureIssue, site: "${JIRA_SITE}"
-                    
-                    jiraAddComment idOrKey: bugResponse.data.key, comment: "Pipeline failure detected. DevOps team has been notified.", site: "${JIRA_SITE}"
+                    jiraAddComment idOrKey: env.DEPLOYMENT_ISSUE_KEY, comment: "❌ Deployment failed. Bug ticket created: ${bugResponse.data.key}", site: "${JIRA_SITE}"
                 }
             }
         }
