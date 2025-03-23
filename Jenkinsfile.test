@@ -270,17 +270,19 @@ EOL
                 script {
                     def testIssue = jiraNewIssue(
                         site: "${JIRA_SITE}",
-                        project: 'AO',
-                        issueType: 'Test Execution',
-                        fields: [
-                            summary: "Test Run #${env.BUILD_NUMBER} - ${env.BRANCH_NAME}",
-                            description: """
-                                Test Cycle: ${JIRA_TEST_CYCLE}
-                                Build Number: ${env.BUILD_NUMBER}
-                                Branch: ${env.BRANCH_NAME}
-                                Status: IN PROGRESS
-                                Build URL: ${env.BUILD_URL}
-                            """
+                        issueInput: [
+                            fields: [
+                                project: [key: 'AO'],
+                                issuetype: [name: 'Test Execution'],
+                                summary: "Test Run #${env.BUILD_NUMBER} - ${env.BRANCH_NAME}",
+                                description: """
+                                    Test Cycle: ${JIRA_TEST_CYCLE}
+                                    Build Number: ${env.BUILD_NUMBER}
+                                    Branch: ${env.BRANCH_NAME}
+                                    Status: IN PROGRESS
+                                    Build URL: ${env.BUILD_URL}
+                                """
+                            ]
                         ]
                     )
                     
@@ -297,19 +299,21 @@ EOL
                 jiraEditIssue(
                     site: "${JIRA_SITE}",
                     idOrKey: env.TEST_ISSUE_KEY,
-                    fields: [
-                        summary: "Test Run #${env.BUILD_NUMBER} - PASSED",
-                        description: """
-                            Test Cycle: ${JIRA_TEST_CYCLE}
-                            Build Number: ${env.BUILD_NUMBER}
-                            Branch: ${env.BRANCH_NAME}
-                            Status: PASSED
-                            Test Coverage: 85%
-                            Unit Tests: 45/45 passed
-                            Integration Tests: 12/12 passed
-                            API Tests: 28/28 passed
-                            Build URL: ${env.BUILD_URL}
-                        """
+                    issueInput: [
+                        fields: [
+                            summary: "Test Run #${env.BUILD_NUMBER} - PASSED",
+                            description: """
+                                Test Cycle: ${JIRA_TEST_CYCLE}
+                                Build Number: ${env.BUILD_NUMBER}
+                                Branch: ${env.BRANCH_NAME}
+                                Status: PASSED
+                                Test Coverage: 85%
+                                Unit Tests: 45/45 passed
+                                Integration Tests: 12/12 passed
+                                API Tests: 28/28 passed
+                                Build URL: ${env.BUILD_URL}
+                            """
+                        ]
                     ]
                 )
                 
@@ -335,19 +339,23 @@ EOL
                 jiraEditIssue(
                     site: "${JIRA_SITE}",
                     idOrKey: env.TEST_ISSUE_KEY,
-                    fields: [
-                        summary: "Test Run #${env.BUILD_NUMBER} - FAILED",
-                        description: failureDescription
+                    issueInput: [
+                        fields: [
+                            summary: "Test Run #${env.BUILD_NUMBER} - FAILED",
+                            description: failureDescription
+                        ]
                     ]
                 )
                 
                 def bugIssue = jiraNewIssue(
                     site: "${JIRA_SITE}",
-                    project: 'AO',
-                    issueType: 'Bug',
-                    fields: [
-                        summary: "Test Failures in Build #${env.BUILD_NUMBER}",
-                        description: failureDescription
+                    issueInput: [
+                        fields: [
+                            project: [key: 'AO'],
+                            issuetype: [name: 'Bug'],
+                            summary: "Test Failures in Build #${env.BUILD_NUMBER}",
+                            description: failureDescription
+                        ]
                     ]
                 )
                 
