@@ -159,20 +159,13 @@ pipeline {
         stage('Update Jira') {
             steps {
                 script {
-                    // Get issue types for the project
-                    def issueTypes = jiraGetProjectIssueTypes idOrKey: 'AO'
-                    def deploymentType = issueTypes.data.find { it.name == 'Deployment' }
-                    if (!deploymentType) {
-                        error "Could not find Deployment issue type"
-                    }
-                    
                     def issueKey = "AO-${env.BUILD_NUMBER}"
                     jiraSendBuildInfo site: "${JIRA_SITE}", branch: "${env.BRANCH_NAME}"
                     
                     def deploymentIssue = [
                         fields: [
                             project: [key: 'AO'],
-                            issuetype: [id: deploymentType.id],
+                            issuetype: [name: 'Deployment'],
                             summary: "Deployment #${env.BUILD_NUMBER} to ${env.BRANCH_NAME}",
                             description: """
                                 Build Number: ${env.BUILD_NUMBER}
@@ -204,17 +197,10 @@ pipeline {
         failure {
             script {
                 if (env.BRANCH_NAME == 'staging' || env.BRANCH_NAME == 'main') {
-                    // Get issue types for the project
-                    def issueTypes = jiraGetProjectIssueTypes idOrKey: 'AO'
-                    def bugType = issueTypes.data.find { it.name == 'Bug' }
-                    if (!bugType) {
-                        error "Could not find Bug issue type"
-                    }
-                    
                     def failureIssue = [
                         fields: [
                             project: [key: 'AO'],
-                            issuetype: [id: bugType.id],
+                            issuetype: [name: 'Bug'],
                             summary: "Deployment #${env.BUILD_NUMBER} failed",
                             description: """
                                 Build Number: ${env.BUILD_NUMBER}
