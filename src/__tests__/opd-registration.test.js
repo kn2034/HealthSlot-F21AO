@@ -81,5 +81,12 @@ describe('OPD Patient Registration Tests', () => {
         chronicConditions: ["Type 2 Diabetes", "Hypertension"],
         previousSurgeries: ["None"]
       },
+      appointmentInfo: {
+        department: "Endocrinology",
+        preferredDoctor: "Dr. Johnson",
+        reasonForVisit: "Diabetes follow-up",
+        preferredTime: "Afternoon"
+      }
+    };
 
       
