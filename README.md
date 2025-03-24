@@ -169,6 +169,9 @@ Our Jenkins pipeline ensures code quality and automated deployments:
 - Error logging and alerting
 - Resource usage monitoring
 - Database health checks
+- Prometheus metrics integration
+- Grafana dashboards for visualization
+- Alert manager configuration
 
 ## 🤝 Contributing
 
