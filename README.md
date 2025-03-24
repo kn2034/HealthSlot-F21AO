@@ -1,69 +1,85 @@
-# HealthSlot - Hospital Management System
+# 🏥 HealthSlot – Hospital Management System
 
-A comprehensive hospital management system built with modern technologies for efficient patient care, ward management, and hospital operations.
+A modern hospital management system designed to streamline patient care, ward management, and operations using cutting-edge technologies, secure APIs, and a robust CI/CD pipeline.
 
-## 🌟 Key Features
+---
 
-- **Patient Management**
-  - OPD and A&E patient registration
-  - Patient history tracking
-  - Digital medical records
-  
-- **Ward Management**
-  - Real-time bed availability tracking
-  - Ward transfers and assignments
-  - Specialized ward categorization
-  
-- **Laboratory Management**
-  - Test registration and tracking
-  - Results management
-  - Automated test ID generation
-  
-- **Security & Access Control**
-  - Role-based access control (RBAC)
-  - JWT authentication
-  - Secure API endpoints
+## 🚀 Key Features
 
-## 🚀 Technical Stack
+### 🧍‍♂️ Patient Management
+- OPD and A&E patient registration
+- Comprehensive digital medical history
+- Emergency and routine patient workflows
 
-- **Backend**: Node.js + Express.js
-- **Database**: MongoDB
-- **Authentication**: JWT
-- **Documentation**: Swagger/OpenAPI
-- **Containerization**: Docker & Docker Compose
-- **CI/CD**: Jenkins Pipeline
-- **Testing**: Jest & Supertest
+### 🛏️ Ward Management
+- Real-time bed availability tracker
+- Ward creation, updates, and transfers
+- Ward specializations and occupancy metrics
 
-## 📚 Documentation
+### 🧪 Laboratory Management
+- Lab test registration and result recording
+- Automated test ID generation
+- Test result history management
 
-- [Complete Setup Guide](SETUP_GUIDE.md) - Detailed instructions for setting up the application
-- [API Testing Guide](API_TESTING_GUIDE.md) - Comprehensive guide for testing all endpoints
-- [API Documentation](http://localhost:3001/api-docs) - Swagger UI (when application is running)
+### 🔐 Security & Access Control
+- JWT-based authentication
+- Role-Based Access Control (RBAC)
+- Secure REST API endpoints
 
-## 🔧 Quick Start
+---
 
-### Prerequisites
+## ⚙️ Tech Stack
 
-- Docker and Docker Compose
-- Node.js v16 or higher (for local development)
-- MongoDB (if running without Docker)
+| Layer          | Technology                             |
+|----------------|-----------------------------------------|
+| Backend        | Node.js, Express.js                    |
+| Database       | MongoDB (Mongoose ODM)                 |
+| Authentication | JWT + Role-Based Access                |
+| API Docs       | Swagger (OpenAPI)                      |
+| Testing        | Jest, Mocha, Chai, Supertest           |
+| CI/CD          | Jenkins, Docker, Kubernetes (Minikube) |
+| Monitoring     | Prometheus (Planned), Custom Endpoints |
+| Containerization | Docker & Docker Compose               |
 
-### Using Docker (Recommended)
+---
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/kn2034/HealthSlot-F21AO.git
-   cd HealthSlot-F21AO
-   ```
+## ⚡ Quick Start
 
-2. Start the application:
-   ```bash
-   docker-compose up --build
-   ```
+### ✅ Prerequisites
+- Node.js 16+
+- Docker & Docker Compose
+- MongoDB (if not using Docker)
 
-3. Access the application:
-   - API: http://localhost:3000
-   - API Documentation: http://localhost:3001/api-docs
+---
+
+### 🐳 Run with Docker (Recommended)
+
+\`\`\`bash
+git clone https://github.com/kn2034/HealthSlot-F21AO.git
+cd HealthSlot-F21AO
+docker-compose up --build
+\`\`\`
+
+🔗 Access:
+- API Base: http://localhost:3000  
+- API Docs: http://localhost:3001/api-docs
+
+---
+
+### 🖥️ Run Locally (Dev Mode)
+
+\`\`\`bash
+npm install
+cp .env.example .env  # Then configure variables
+mongod                # Start MongoDB locally
+npm run dev
+\`\`\`
+
+---
+
+## 🧪 Testing
+
+We use both **Jest** and **Mocha + Chai** to provide flexibility for different test types.
 
 ### Local Development
 
@@ -88,87 +104,100 @@ A comprehensive hospital management system built with modern technologies for ef
    npm run dev
    ```
 
-## 🧪 Testing
+## 🔬 API Testing Guide
 
-```bash
-# Run all tests
-npm test
+📘 [Read the API Testing Guide](API_TESTING_GUIDE.md)  
+It includes:
+- cURL examples for all endpoints
+- Full flow: registration → admission → test → transfer
 
-# Run specific test suite
-npm test -- --grep "Auth Tests"
+Swagger UI (auto-generated from code):  
+📄 [http://localhost:3001/api-docs](http://localhost:3001/api-docs)
 
-# Run with coverage
-npm run test:coverage
+---
 
-# Run linting
-npm run lint
-```
+## 🔄 CI/CD Pipeline (via Jenkins)
 
-## 🔄 CI/CD Pipeline
-
-Our Jenkins pipeline ensures code quality and automated deployments:
+Our CI/CD workflow includes:
 
 1. **Build & Test**
-   - Dependency installation
-   - Linting and code quality checks
-   - Unit and integration tests
-   - Test coverage reports
+   - Dependency installs
+   - Linting
+   - Unit + Integration testing (Mocha & Jest)
+   - Code coverage
 
-2. **Quality Gates**
-   - Code coverage thresholds
-   - Security vulnerability scanning
-   - Performance benchmarks
+2. **Security & Quality**
+   - OWASP ZAP scan (automated)
+   - Code quality thresholds
+   - Lint & coverage checks
 
 3. **Deployment**
-   - Multi-stage Docker builds
-   - Automated staging deployment
-   - Manual production deployment approval
-   - Post-deployment health checks
+   - Docker image builds & pushes
+   - Auto-deploy to staging
+   - Manual approval to production
+   - Post-deploy health checks
 
-## 🔐 Security Features
+---
 
-- JWT-based authentication
-- Role-based access control
-- Input validation and sanitization
-- Rate limiting
-- HTTPS enforcement in production
+## 🛡️ Security Features
+
+- JWT authentication
+- Role-based access control (RBAC)
+- Input validation & sanitization
+- HTTPS enforcement (production)
 - Secure password hashing
-- Regular security updates
+- OWASP ZAP security scanning
+- Rate limiting & error handling
 
-## 🛠️ API Endpoints
+---
 
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
+## 📊 Monitoring & Health
 
-### Patients
-- `POST /api/patients/register-opd` - Register OPD patient
-- `POST /api/patients/register-ae` - Register A&E patient
-- `GET /api/patients` - List all patients
-- `GET /api/patients/:id` - Get patient details
+- \`GET /api/health\` – Health check endpoint
+- Resource usage monitoring via Prometheus (planned)
+- Real-time logs via Docker & Jenkins pipeline
 
-### Wards
-- `POST /api/wards` - Create new ward
-- `GET /api/wards` - List all wards
-- `PUT /api/wards/:id` - Update ward
-- `DELETE /api/wards/:id` - Delete ward
+---
 
-### Lab Tests
-- `POST /api/lab/test-registration` - Register new test
-- `GET /api/lab/test-registrations` - List all tests
-- `POST /api/lab/results` - Add test results
+## 📌 API Endpoints
 
-### Transfers
-- `PUT /api/transfers/transfer` - Transfer patient between wards
+### 🛡️ Authentication
+- `POST /api/auth/register` – Register a new user
+- `POST /api/auth/login` – Login and get JWT token
+- `POST /api/auth/logout` – Logout user (invalidate token)
 
-## 📈 Monitoring
+### 🧍 Patients
+- `POST /api/patients/register-opd` – Register a new OPD patient
+- `POST /api/patients/register-ae` – Register a new A&E patient
 
-- Real-time application monitoring
-- Performance metrics tracking
-- Error logging and alerting
-- Resource usage monitoring
-- Database health checks
+### 🏥 Admissions
+- `POST /api/admissions/admit` – Admit a patient to a ward
+- `GET /api/admissions/status/:admissionId` – Get admission status
+- `PUT /api/admissions/discharge` – Discharge a patient
+
+### 🔁 Transfers
+- `PUT /api/transfers/transfer` – Transfer patient between wards
+
+### 🧪 Lab Tests
+- `POST /api/lab/test-registration` – Register a test for a patient
+- `GET /api/lab/test-registrations` – View all test registrations
+- `POST /api/lab/tests` – Create a new lab test type
+- `GET /api/lab/tests` – Get all lab test types
+- `GET /api/lab/tests/:id` – Get test type by ID
+
+### 🧾 Lab Results
+- `POST /api/lab/results` – Add lab test result
+- `GET /api/lab/results` – View all lab results
+- `GET /api/lab/results/:id` – View test result by ID
+
+### ❤️ Health Check
+- `GET /api/health` – Check server health and uptime
+
+### 🛏️ Wards
+- `POST /api/wards` – Create a new hospital ward  
+- `GET /api/wards` – Get all wards  
+
+---
 
 ## 🤝 Contributing
 
@@ -178,16 +207,23 @@ Our Jenkins pipeline ensures code quality and automated deployments:
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📝 License
+---
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 📜 License
+
+MIT License – See the [LICENSE](LICENSE) file.
+
+---
 
 ## 👥 Contributors
+- Gagan Lokanath Shetty(https://github.com/gagan-L)
+- Harshitha Srikanth(https://github.com/hs2121-hw)
+- Kiran Narayana(https://github.com/kirannarayanak)
+- Sanjana Koujalgi(https://github.com/sk2235)
 
-- [Your Name](https://github.com/yourusername)
-- [Add other contributors]
+---
 
-## 📞 Support
+## 🆘 Support
 
 For support and queries, please [open an issue](https://github.com/kn2034/HealthSlot-F21AO/issues) or contact the maintainers.
 
@@ -198,3 +234,5 @@ For support and queries, please [open an issue](https://github.com/kn2034/Health
 - Security scanning with OWASP ZAP
 - Automated deployment to staging
 - Production deployment with approval
+
+👉 [Open an issue](https://github.com/kn2034/HealthSlot-F21AO/issues) for bug reports or help
