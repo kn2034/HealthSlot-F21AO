@@ -190,3 +190,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 For support and queries, please [open an issue](https://github.com/kn2034/HealthSlot-F21AO/issues) or contact the maintainers.
+
+## 🔄 CI/CD Pipeline
+- Automated Jenkins pipeline
+- Continuous Integration with GitHub
+- Automated testing on every commit
+- Security scanning with OWASP ZAP
+- Automated deployment to staging
+- Production deployment with approval
