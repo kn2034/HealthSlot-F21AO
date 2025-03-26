@@ -316,7 +316,7 @@ pipeline {
                     echo "  • Max Replicas: 15"
                     echo "  • Target CPU: 70%"
                     echo "  • Scale-up: +2 pods when CPU > 70%"
-                    echo "  • Scale-down: -1 pod when CPU < 50%"
+                    echo "  • Scale-down: -1 pod when CPU < 50%" 
                 """
             }
         }
@@ -482,7 +482,7 @@ pipeline {
                     ]
                     
                     def bugResponse = jiraNewIssue issue: failureIssue, site: "${JIRA_SITE}"
-                    jiraAddComment idOrKey: env.DEPLOYMENT_ISSUE_KEY, comment: "❌ Deployment failed. Bug ticket created: ${bugResponse.data.key}", site: "${JIRA_SITE}"
+                    jiraAddComment idOrKey: env.DEPLOYMENT_ISSUE_KEY, comment: "❌ Deployment failed. Bug ticket created : ${bugResponse.data.key}", site: "${JIRA_SITE}"
                 }
             }
         }
